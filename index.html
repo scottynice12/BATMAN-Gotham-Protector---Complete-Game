@@ -2,52 +2,484 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Batman Game</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>BATMAN: Gotham Knights</title>
     <style>
-        body { background: black; display: flex; justify-content: center; align-items: center; min-height: 100vh; font-family: monospace; }
-        canvas { border: 3px solid gold; }
-        .info { color: gold; text-align: center; margin-top: 10px; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
+        body {
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Courier New', monospace;
+        }
+        .game-container {
+            text-align: center;
+            padding: 20px;
+        }
+        canvas {
+            border: 4px solid #ffd700;
+            border-radius: 8px;
+            background: #0a0a2a;
+            cursor: pointer;
+            image-rendering: crisp-edges;
+            image-rendering: pixelated;
+        }
+        .game-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .stat-panel {
+            background: rgba(0,0,0,0.85);
+            padding: 6px 12px;
+            border-radius: 8px;
+            border: 1px solid gold;
+            color: gold;
+            font-size: 12px;
+        }
+        .stat-panel span {
+            color: white;
+            font-size: 1.2rem;
+            margin-left: 5px;
+        }
+        .controls {
+            margin-top: 12px;
+            color: #aaa;
+            font-size: 0.7rem;
+        }
+        .controls kbd {
+            background: #222;
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: gold;
+        }
+        .restart-btn {
+            background: gold;
+            color: #1a1a2e;
+            border: none;
+            padding: 6px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            margin-top: 12px;
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
-<div>
-    <canvas id="gameCanvas" width="800" height="400"></canvas>
-    <div class="info">← → Move | A Punch | S Kick</div>
+<div class="game-container">
+    <div class="game-header">
+        <div class="stat-panel">🏆 SCORE <span id="score">0</span></div>
+        <div class="stat-panel">📍 <span id="levelName">Arkham Asylum</span></div>
+        <div class="stat-panel">⏱️ <span id="timer">180</span>s</div>
+        <div class="stat-panel">🤝 <span id="sidekick">⚫ None</span></div>
+        <div class="stat-panel">❤️ <span id="health">100</span>/100</div>
+    </div>
+    <canvas id="gameCanvas" width="1100" height="550"></canvas>
+    <div class="controls">
+        🎮 <kbd>←</kbd> <kbd>→</kbd> Move &nbsp;| <kbd>A</kbd> Punch (10) &nbsp;| <kbd>S</kbd> Kick (15) &nbsp;|
+        <kbd>D</kbd> Call Sidekick &nbsp;| <kbd>SPACE</kbd> Block
+    </div>
+    <button class="restart-btn" onclick="restartGame()">🔄 RESTART</button>
 </div>
+
 <script>
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
-    
-    let player = { x: 100, y: 300, width: 30, height: 30, health: 100 };
-    let enemy = { x: 600, y: 300, width: 30, height: 30, health: 80 };
-    let attacking = false;
-    
-    function draw() {
-        ctx.fillStyle = '#222';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = 'blue';
-        ctx.fillRect(player.x, player.y, player.width, player.height);
-        ctx.fillStyle = 'red';
-        ctx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
-        ctx.fillStyle = 'white';
-        ctx.fillText('Batman HP: '+player.health, 10, 20);
-        ctx.fillText('Enemy HP: '+enemy.health, 10, 40);
+    ctx.imageSmoothingEnabled = false;
+
+    // ========== GAME STATE ==========
+    let score = 0;
+    let currentLevel = 1;
+    let gameRunning = true;
+    let frame = 0;
+    let attackCooldown = 0;
+    let sidekickCooldown = 0;
+    let damageFlash = 0;
+    let invincibleFrames = 0;
+    let blockActive = false;
+    let blockTimer = 0;
+    let timeLeft = 180;
+    let timerInterval = null;
+    let shakeAmount = 0;
+
+    // ========== SIDEKICKS (Nightwing moves!) ==========
+    let nightwingActive = false;
+    let nightwing = { x: 0, y: 0, active: false, attackTimer: 0, moveTimer: 0 };
+    let currentSidekickLevel = 0; // 0=none,1=Robin,2=Batgirl,3=Nightwing
+
+    // ========== LEVELS (6 unique Gotham locations) ==========
+    const LEVELS = {
+        1: { name: 'ARKHAM ASYLUM', villain: 'Scarecrow', health: 180, damage: 6, color: '#8B4513', eye: '#ff6600', emoji: '🌾', bg1: '#1a0a2a', bg2: '#2a1a3a', ground: '#3a2a3a' },
+        2: { name: 'GOTHAM CEMETERY', villain: 'Hush', health: 200, damage: 7, color: '#2F4F4F', eye: '#ff0000', emoji: '🩺', bg1: '#0a1a1a', bg2: '#1a2a2a', ground: '#2a3a2a' },
+        3: { name: 'GOTHAM BANK', villain: 'Riddler', health: 190, damage: 6, color: '#006400', eye: '#00ff00', emoji: '❓', bg1: '#1a1a00', bg2: '#2a2a10', ground: '#3a3a20' },
+        4: { name: 'SEWERS', villain: 'Clayface', health: 250, damage: 8, color: '#8B6914', eye: '#ffaa00', emoji: '🧱', bg1: '#0a1a0a', bg2: '#1a2a1a', ground: '#2a3a2a' },
+        5: { name: 'ICEBERG LOUNGE', villain: 'Mr Freeze', health: 220, damage: 7, color: '#00BFFF', eye: '#88ddff', emoji: '❄️', bg1: '#001a2a', bg2: '#102a3a', ground: '#203a4a' },
+        6: { name: 'JOKER FUNHOUSE', villain: 'Joker', health: 280, damage: 9, color: '#9400D3', eye: '#ff00ff', emoji: '🃏', bg1: '#2a001a', bg2: '#3a102a', ground: '#4a203a' }
+    };
+    let currentLevelData = LEVELS[1];
+    let currentVillainHealth = currentLevelData.health;
+    let currentVillainMaxHealth = currentLevelData.health;
+
+    // ========== PLAYER & VILLAIN ==========
+    const player = { x: 150, y: canvas.height - 120, width: 40, height: 48, health: 100, maxHealth: 100, isAttacking: false, attackTimer: 0, facingRight: true, attackType: '' };
+    const villain = { x: canvas.width - 200, y: canvas.height - 120, width: 44, height: 48, isAttacking: false, attackTimer: 0, attackCooldown: 0, moveDirection: -1, moveTimer: 0 };
+
+    // ========== UI UPDATES ==========
+    function updateUI() {
+        document.getElementById('score').innerText = score;
+        document.getElementById('levelName').innerHTML = currentLevelData.name;
+        document.getElementById('health').innerText = player.health;
+        let sideName = 'None';
+        if (currentSidekickLevel === 1) sideName = '🤸 Robin';
+        else if (currentSidekickLevel === 2) sideName = '🦸‍♀️ Batgirl';
+        else if (currentSidekickLevel === 3) sideName = '⚡ Nightwing';
+        document.getElementById('sidekick').innerHTML = sideName;
     }
-    
-    function update() {
-        draw();
-        requestAnimationFrame(update);
+
+    // ========== TIMER ==========
+    function startTimer() {
+        if (timerInterval) clearInterval(timerInterval);
+        timerInterval = setInterval(() => {
+            if (!gameRunning) return;
+            if (timeLeft > 0) {
+                timeLeft--;
+                document.getElementById('timer').innerText = timeLeft;
+                if (timeLeft <= 30) document.getElementById('timer').style.color = '#ff0000';
+                if (timeLeft <= 0) {
+                    clearInterval(timerInterval);
+                    gameRunning = false;
+                    showText('🎉 TIME\'S UP! VICTORY! 🎉', canvas.width/2, 200, 'gold');
+                    score += currentLevel * 500;
+                    updateUI();
+                }
+            }
+        }, 1000);
     }
-    
-    document.addEventListener('keydown', (e) => {
-        if(e.key === 'ArrowLeft') player.x -= 20;
-        if(e.key === 'ArrowRight') player.x += 20;
-        if(e.key === 'a') {
-            if(Math.abs(player.x - enemy.x) < 50) enemy.health -= 10;
+
+    // ========== SIDEKICK UNLOCK ==========
+    function checkSidekickUnlock() {
+        if (currentLevel >= 2 && currentSidekickLevel === 0) currentSidekickLevel = 1;
+        if (currentLevel >= 4 && currentSidekickLevel === 1) currentSidekickLevel = 2;
+        if (currentLevel >= 6 && currentSidekickLevel === 2) {
+            currentSidekickLevel = 3;
+            showText('⚡ NIGHTWING JOINS THE FIGHT! ⚡', canvas.width/2, 100, '#44aaff');
         }
+        updateUI();
+    }
+
+    // ========== NIGHTWING AI (moves and attacks on his own!) ==========
+    function updateNightwing() {
+        if (currentSidekickLevel !== 3) return;
+        if (!nightwingActive) {
+            nightwing.active = true;
+            nightwing.x = player.x - 60;
+            nightwing.y = player.y;
+        }
+        if (nightwing.active) {
+            // Move toward villain
+            if (nightwing.x < villain.x - 80) nightwing.x += 2.5;
+            if (nightwing.x > villain.x - 80) nightwing.x -= 1;
+            if (nightwing.x < player.x - 100) nightwing.x = player.x - 90;
+            if (nightwing.x > player.x + 50) nightwing.x = player.x + 40;
+            nightwing.y = player.y;
+            nightwing.moveTimer++;
+            if (nightwing.moveTimer > 60 && Math.abs(nightwing.x - villain.x) < 100) {
+                nightwing.moveTimer = 0;
+                nightwing.attackTimer = 15;
+                let dmg = 18;
+                currentVillainHealth -= dmg;
+                score += 15;
+                updateUI();
+                showText(`⚡ NIGHTWING! -${dmg}`, villain.x + 20, villain.y - 40, '#44aaff');
+                if (currentVillainHealth <= 0) defeatVillain();
+            }
+            if (nightwing.attackTimer > 0) nightwing.attackTimer--;
+        }
+    }
+
+    // ========== CALL SIDEKICK (static assist) ==========
+    function callSidekick() {
+        if (!gameRunning) return;
+        if (currentSidekickLevel === 0) { showText('Unlock at Level 2!', canvas.width/2, 150, '#ffaa00'); return; }
+        if (sidekickCooldown > 0) return;
+        sidekickCooldown = 60;
+        let dmg = 0, name = '';
+        if (currentSidekickLevel === 1) { dmg = 20; name = 'ROBIN'; }
+        else if (currentSidekickLevel === 2) { dmg = 30; name = 'BATGIRL'; }
+        else if (currentSidekickLevel === 3) { dmg = 25; name = 'NIGHTWING'; }
+        currentVillainHealth -= dmg;
+        score += 20;
+        updateUI();
+        showText(`${name} ASSIST! -${dmg}!`, villain.x + 20, villain.y - 50, 'gold');
+        if (currentVillainHealth <= 0) defeatVillain();
+    }
+
+    // ========== ATTACKS ==========
+    function punch() {
+        if (!gameRunning || attackCooldown > 0 || player.isAttacking) return;
+        player.isAttacking = true; player.attackType = 'punch'; player.attackTimer = 10; attackCooldown = 20;
+        if (Math.abs(player.x - villain.x) < 90) {
+            currentVillainHealth -= 10; score += 10; updateUI();
+            showText('PUNCH! -10', villain.x + 20, villain.y - 20, '#ffaa44');
+            if (currentVillainHealth <= 0) defeatVillain();
+        } else showText('MISS!', player.x + 20, player.y - 30, '#ff6666');
+    }
+    function kick() {
+        if (!gameRunning || attackCooldown > 0 || player.isAttacking) return;
+        player.isAttacking = true; player.attackType = 'kick'; player.attackTimer = 12; attackCooldown = 25;
+        if (Math.abs(player.x - villain.x) < 90) {
+            currentVillainHealth -= 15; score += 15; updateUI();
+            showText('KICK! -15', villain.x + 20, villain.y - 20, '#ff8844');
+            if (currentVillainHealth <= 0) defeatVillain();
+        } else showText('MISS!', player.x + 20, player.y - 30, '#ff6666');
+    }
+    function block() {
+        if (!gameRunning || blockTimer > 0) return;
+        blockActive = true; blockTimer = 20;
+        showText('🛡️ BLOCK!', player.x, player.y - 30, '#88aaff');
+    }
+
+    // ========== VILLAIN AI ==========
+    function villainAttack() {
+        if (!gameRunning) return;
+        if (villain.attackCooldown > 0) { villain.attackCooldown--; return; }
+        if (Math.abs(player.x - villain.x) < 100 && !villain.isAttacking) {
+            villain.isAttacking = true; villain.attackTimer = 15; villain.attackCooldown = 45;
+            setTimeout(() => {
+                if (!gameRunning) return;
+                if (Math.abs(player.x - villain.x) < 100) {
+                    if (blockActive) { showText('BLOCKED!', player.x + 20, player.y - 30, '#88ff88'); blockActive = false; }
+                    else if (invincibleFrames <= 0) {
+                        player.health -= currentLevelData.damage;
+                        damageFlash = 15; invincibleFrames = 25; updateUI();
+                        showText(`-${currentLevelData.damage}!`, player.x + 20, player.y - 20, '#ff4444');
+                        if (player.health <= 0) { gameRunning = false; if (timerInterval) clearInterval(timerInterval); }
+                    }
+                }
+                villain.isAttacking = false;
+            }, 350);
+        }
+    }
+
+    function updateVillainMovement() {
+        villain.moveTimer++;
+        if (villain.moveTimer > 60) { villain.moveDirection *= -1; villain.moveTimer = 0; }
+        let newX = villain.x + (villain.moveDirection * 1.2);
+        if (newX > canvas.width - 120) newX = canvas.width - 120;
+        if (newX < canvas.width - 350) newX = canvas.width - 350;
+        villain.x = newX;
+    }
+
+    // ========== DEFEAT VILLAIN ==========
+    function defeatVillain() {
+        score += currentLevel * 150;
+        updateUI();
+        showText(`⭐ ${currentLevelData.villain} DEFEATED! +${currentLevel * 150} ⭐`, canvas.width/2, 150, 'gold');
+        if (currentLevel < 6) {
+            currentLevel++;
+            currentLevelData = LEVELS[currentLevel];
+            currentVillainHealth = currentLevelData.health;
+            currentVillainMaxHealth = currentLevelData.health;
+            villain.x = canvas.width - 200;
+            player.health = Math.min(player.health + 30, 100);
+            timeLeft += 30;
+            document.getElementById('timer').innerText = timeLeft;
+            checkSidekickUnlock();
+            updateUI();
+            showText(`📍 ${currentLevelData.name}`, canvas.width/2, 80, '#ffaa00');
+        } else {
+            gameRunning = false;
+            if (timerInterval) clearInterval(timerInterval);
+            showText('🏆 GOTHAM IS SAFE! 🏆', canvas.width/2, 200, 'gold');
+        }
+    }
+
+    // ========== VISUALS ==========
+    let floatingTexts = [];
+    function showText(msg, x, y, color) { floatingTexts.push({ text: msg, x, y, color, life: 50 }); }
+
+    // Drawing functions (pixel art)
+    function drawBackground() {
+        const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+        grad.addColorStop(0, currentLevelData.bg1); grad.addColorStop(1, currentLevelData.bg2);
+        ctx.fillStyle = grad; ctx.fillRect(0, 0, canvas.width, canvas.height);
+        // quick level decorations
+        ctx.fillStyle = currentLevelData.ground;
+        ctx.fillRect(0, canvas.height - 65, canvas.width, 65);
+        ctx.fillStyle = 'gold';
+        ctx.font = "bold 10px monospace";
+        ctx.fillText(currentLevelData.name, canvas.width/2 - 60, canvas.height - 10);
+    }
+    function drawBatman() {
+        let px = player.x, py = player.y;
+        if (invincibleFrames > 0 && (Math.floor(Date.now()/50)%2===0)) ctx.globalAlpha = 0.5;
+        ctx.fillStyle = '#00000033'; ctx.fillRect(px+5, py+45, 35, 5);
+        ctx.fillStyle = '#2244aa'; ctx.fillRect(px-(player.facingRight?12:5), py+15, 18, 35);
+        ctx.fillStyle = '#555555'; ctx.fillRect(px+8, py+22, 30, 26);
+        ctx.fillStyle = 'gold'; ctx.fillRect(px+8, py+44, 30, 4);
+        ctx.fillStyle = 'gold'; ctx.fillRect(px+20, py+32, 8, 6);
+        ctx.fillStyle = '#3366cc'; ctx.fillRect(px+12, py+8, 22, 18);
+        ctx.fillRect(px+14, py+0, 5, 10); ctx.fillRect(px+27, py+0, 5, 10);
+        ctx.fillStyle = '#ffffff'; ctx.fillRect(px+16, py+14, 6, 5); ctx.fillRect(px+24, py+14, 6, 5);
+        ctx.fillStyle = '#000000'; ctx.fillRect(px+(player.facingRight?20:18), py+15, 2, 3); ctx.fillRect(px+(player.facingRight?28:26), py+15, 2, 3);
+        if (player.isAttacking) {
+            ctx.fillStyle = player.attackType === 'punch' ? '#ffaa44' : '#ff6644';
+            ctx.fillRect(px+35+(player.facingRight?5:-25), py+28, 20, 12);
+        }
+        ctx.globalAlpha = 1;
+    }
+    function drawNightwing() {
+        if (currentSidekickLevel !== 3 || !nightwing.active) return;
+        let nx = nightwing.x, ny = nightwing.y;
+        ctx.fillStyle = '#00000033'; ctx.fillRect(nx+5, ny+45, 30, 5);
+        ctx.fillStyle = '#111111'; ctx.fillRect(nx+8, ny+22, 28, 24);
+        ctx.fillStyle = '#44aaff'; ctx.fillRect(nx+20, ny+32, 6, 6);
+        ctx.fillStyle = '#222222'; ctx.fillRect(nx+12, ny+8, 20, 16);
+        ctx.fillStyle = '#44aaff'; ctx.fillRect(nx+14, ny+13, 16, 5);
+        ctx.fillStyle = '#ffffff'; ctx.fillRect(nx+16, ny+14, 4, 3); ctx.fillRect(nx+24, ny+14, 4, 3);
+        if (nightwing.attackTimer > 0) { ctx.fillStyle = '#44aaff'; ctx.fillRect(nx+35, ny+28, 18, 10); }
+    }
+    function drawVillain() {
+        let vx = villain.x, vy = villain.y;
+        let percent = currentVillainHealth / currentVillainMaxHealth;
+        ctx.fillStyle = '#330000'; ctx.fillRect(vx+5, vy-18, 70, 8);
+        ctx.fillStyle = '#cc0000'; ctx.fillRect(vx+5, vy-18, 70*percent, 8);
+        ctx.fillStyle = 'gold'; ctx.font = "bold 8px monospace"; ctx.fillText(currentLevelData.villain, vx+20, vy-22);
+        ctx.fillStyle = currentLevelData.color; ctx.fillRect(vx+8, vy+18, 36, 28); ctx.fillRect(vx+12, vy+4, 28, 18);
+        ctx.fillStyle = currentLevelData.eye; ctx.fillRect(vx+18, vy+10, 6, 5); ctx.fillRect(vx+28, vy+10, 6, 5);
+        ctx.fillStyle = '#000000'; ctx.fillRect(vx+20+(Math.sin(frame*0.1)*1), vy+11, 2, 3); ctx.fillRect(vx+30+(Math.sin(frame*0.1)*1), vy+11, 2, 3);
+        ctx.fillStyle = '#440000'; ctx.fillRect(vx+20, vy+18, 12, 4);
+        ctx.font = "24px monospace"; ctx.fillStyle = '#ffffff'; ctx.fillText(currentLevelData.emoji, vx+12, vy-5);
+        if (villain.isAttacking) { ctx.fillStyle = 'rgba(255,50,50,0.4)'; ctx.fillRect(vx-10, vy-10, 70, 70); }
+    }
+    function drawSidekickIcon() {
+        if (currentSidekickLevel === 1) { ctx.font = "28px monospace"; ctx.fillStyle = '#44ff44'; ctx.fillText('🤸', 20, canvas.height-40); ctx.fillStyle = 'gold'; ctx.font = "8px monospace"; ctx.fillText('ROBIN', 50, canvas.height-35); }
+        else if (currentSidekickLevel === 2) { ctx.font = "28px monospace"; ctx.fillStyle = '#ff69b4'; ctx.fillText('🦸‍♀️', 20, canvas.height-40); ctx.fillStyle = 'gold'; ctx.fillText('BATGIRL', 50, canvas.height-35); }
+        if (sidekickCooldown > 0 && currentSidekickLevel > 0 && currentSidekickLevel < 3) {
+            ctx.fillStyle = '#333366'; ctx.fillRect(20, canvas.height-50, 80, 5);
+            ctx.fillStyle = 'gold'; ctx.fillRect(20, canvas.height-50, 80*(1-sidekickCooldown/60), 5);
+        }
+    }
+    function drawHealthBars() {
+        ctx.fillStyle = '#330000'; ctx.fillRect(20, 25, 200, 16);
+        ctx.fillStyle = '#00cc44'; ctx.fillRect(20, 25, 200*(player.health/player.maxHealth), 16);
+        ctx.fillStyle = '#ffffff'; ctx.font = "bold 9px monospace"; ctx.fillText("BATMAN", 25, 37);
+        if (damageFlash > 0) { ctx.fillStyle = 'rgba(255,0,0,0.15)'; ctx.fillRect(0, 0, canvas.width, canvas.height); }
+    }
+    function drawFloatingTexts() {
+        for (let i=0; i<floatingTexts.length; i++) {
+            let ft = floatingTexts[i];
+            ctx.font = "bold 12px monospace"; ctx.fillStyle = ft.color; ctx.fillText(ft.text, ft.x, ft.y);
+            ft.y -= 1; ft.life--;
+        }
+        floatingTexts = floatingTexts.filter(ft => ft.life > 0);
+    }
+
+    // ========== GAME LOOP ==========
+    function updateGame() {
+        if (!gameRunning) return;
+        frame++;
+        if (attackCooldown > 0) attackCooldown--;
+        if (sidekickCooldown > 0) sidekickCooldown--;
+        if (damageFlash > 0) damageFlash--;
+        if (invincibleFrames > 0) invincibleFrames--;
+        if (blockTimer > 0) { blockTimer--; if (blockTimer <= 0) blockActive = false; }
+        if (player.attackTimer > 0) player.attackTimer--;
+        else player.isAttacking = false;
+        const keys = window.keys || {};
+        if (keys.ArrowLeft && player.x > 70) { player.x -= 5; player.facingRight = false; }
+        if (keys.ArrowRight && player.x < canvas.width - 300) { player.x += 5; player.facingRight = true; }
+        updateVillainMovement();
+        villainAttack();
+        updateNightwing();
+    }
+    function draw() {
+        drawBackground();
+        drawHealthBars();
+        drawVillain();
+        drawBatman();
+        drawNightwing();
+        drawSidekickIcon();
+        drawFloatingTexts();
+        if (!gameRunning) {
+            ctx.fillStyle = 'rgba(0,0,0,0.9)'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.font = "bold 28px monospace"; ctx.fillStyle = 'gold';
+            ctx.fillText(player.health > 0 ? '🏆 VICTORY! 🏆' : '💀 GAME OVER 💀', canvas.width/2-130, canvas.height/2-30);
+            ctx.font = "12px monospace"; ctx.fillStyle = 'white';
+            ctx.fillText(`Final Score: ${score}`, canvas.width/2-50, canvas.height/2+30);
+        }
+    }
+    function gameLoop() { updateGame(); draw(); requestAnimationFrame(gameLoop); }
+
+    // ========== RESTART ==========
+    function restartGame() {
+        gameRunning = true;
+        score = 0;
+        currentLevel = 1;
+        currentLevelData = LEVELS[1];
+        currentVillainHealth = currentLevelData.health;
+        currentVillainMaxHealth = currentLevelData.health;
+        player.health = 100;
+        player.x = 150;
+        currentSidekickLevel = 0;
+        timeLeft = 180;
+        floatingTexts = [];
+        attackCooldown = 0;
+        sidekickCooldown = 0;
+        nightwingActive = false;
+        if (timerInterval) clearInterval(timerInterval);
+        startTimer();
+        villain.x = canvas.width - 200;
+        updateUI();
+        document.getElementById('timer').style.color = 'gold';
+    }
+
+    // ========== KEYBOARD & TOUCH ==========
+    window.keys = {};
+    window.addEventListener('keydown', (e) => {
+        let key = e.key.toLowerCase();
+        if (key === 'arrowleft') keys.ArrowLeft = true;
+        if (key === 'arrowright') keys.ArrowRight = true;
+        if (key === 'a') { e.preventDefault(); punch(); }
+        if (key === 's') { e.preventDefault(); kick(); }
+        if (key === 'd') { e.preventDefault(); callSidekick(); }
+        if (key === ' ') { e.preventDefault(); block(); }
+        if (key === 'r') { e.preventDefault(); restartGame(); }
     });
-    
-    update();
+    window.addEventListener('keyup', (e) => {
+        let key = e.key.toLowerCase();
+        if (key === 'arrowleft') keys.ArrowLeft = false;
+        if (key === 'arrowright') keys.ArrowRight = false;
+    });
+    canvas.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        let rect = canvas.getBoundingClientRect();
+        let tx = e.touches[0].clientX - rect.left;
+        if (tx < canvas.width/4) punch();
+        else if (tx < canvas.width/2) kick();
+        else if (tx < canvas.width*3/4) block();
+        else callSidekick();
+    });
+    canvas.addEventListener('touchmove', (e) => {
+        e.preventDefault();
+        let rect = canvas.getBoundingClientRect();
+        let tx = e.touches[0].clientX - rect.left;
+        player.x = Math.min(Math.max(tx - 30, 70), canvas.width - 300);
+    });
+
+    startTimer();
+    updateUI();
+    gameLoop();
 </script>
 </body>
 </html>
+ 
