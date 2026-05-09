@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Batman Game</title>
+    <style>
+        body { background: black; display: flex; justify-content: center; align-items: center; min-height: 100vh; font-family: monospace; }
+        canvas { border: 3px solid gold; }
+        .info { color: gold; text-align: center; margin-top: 10px; }
+    </style>
+</head>
+<body>
+<div>
+    <canvas id="gameCanvas" width="800" height="400"></canvas>
+    <div class="info">← → Move | A Punch | S Kick</div>
+</div>
+<script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    
+    let player = { x: 100, y: 300, width: 30, height: 30, health: 100 };
+    let enemy = { x: 600, y: 300, width: 30, height: 30, health: 80 };
+    let attacking = false;
+    
+    function draw() {
+        ctx.fillStyle = '#222';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = 'blue';
+        ctx.fillRect(player.x, player.y, player.width, player.height);
+        ctx.fillStyle = 'red';
+        ctx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
+        ctx.fillStyle = 'white';
+        ctx.fillText('Batman HP: '+player.health, 10, 20);
+        ctx.fillText('Enemy HP: '+enemy.health, 10, 40);
+    }
+    
+    function update() {
+        draw();
+        requestAnimationFrame(update);
+    }
+    
+    document.addEventListener('keydown', (e) => {
+        if(e.key === 'ArrowLeft') player.x -= 20;
+        if(e.key === 'ArrowRight') player.x += 20;
+        if(e.key === 'a') {
+            if(Math.abs(player.x - enemy.x) < 50) enemy.health -= 10;
+        }
+    });
+    
+    update();
+</script>
+</body>
+</html>
