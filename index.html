@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>BATMAN: Arkham Knights 🦇 | Beat 'Em Up</title>
+    <title>BATMAN: Tang Soo Do Warrior 🥋 | Street Fighter Style</title>
     <style>
         * {
             margin: 0;
@@ -18,7 +18,7 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            font-family: 'Courier New', 'Arial', monospace;
+            font-family: 'Courier New', 'Press Start 2P', monospace;
         }
 
         .game-container {
@@ -27,11 +27,13 @@
         }
 
         canvas {
-            border: 3px solid #ffd700;
-            border-radius: 10px;
-            box-shadow: 0 0 30px rgba(255, 215, 0, 0.3);
+            border: 4px solid #ffd700;
+            border-radius: 8px;
+            box-shadow: 0 0 30px rgba(255, 215, 0, 0.4);
             background: #0a0a2a;
             cursor: pointer;
+            image-rendering: crisp-edges;
+            image-rendering: pixelated;
         }
 
         .game-header {
@@ -39,47 +41,72 @@
             justify-content: space-between;
             align-items: center;
             margin-bottom: 15px;
-            color: #ffd700;
-            text-shadow: 0 0 5px #ffd700;
-            font-weight: bold;
             flex-wrap: wrap;
             gap: 10px;
         }
 
-        .score-box, .lives-box, .level-box, .sidekick-box {
-            background: rgba(0,0,0,0.8);
+        .stat-panel {
+            background: rgba(0,0,0,0.85);
             padding: 8px 15px;
-            border-radius: 20px;
+            border-radius: 8px;
             border: 1px solid #ffd700;
+            font-family: monospace;
+            color: #ffd700;
+            font-weight: bold;
+            font-size: 12px;
         }
 
-        .score-box span, .lives-box span, .level-box span, .sidekick-box span {
-            color: white;
-            font-size: 1.2rem;
+        .stat-panel span {
+            color: #fff;
+            font-size: 1.3rem;
             margin-left: 8px;
         }
 
-        .title {
-            font-size: 1.2rem;
-            letter-spacing: 2px;
+        .super-bar {
+            background: rgba(0,0,0,0.85);
+            padding: 5px 15px;
+            border-radius: 8px;
+            border: 1px solid #ffd700;
+        }
+
+        .super-fill {
+            height: 12px;
+            background: linear-gradient(90deg, #ff0066, #ffcc00);
+            border-radius: 6px;
+            transition: width 0.2s;
         }
 
         .controls {
-            margin-top: 20px;
+            margin-top: 15px;
             color: #aaa;
-            font-size: 0.8rem;
-            background: rgba(0,0,0,0.6);
+            font-size: 0.7rem;
+            background: rgba(0,0,0,0.7);
             padding: 10px;
-            border-radius: 10px;
+            border-radius: 8px;
         }
 
         .controls kbd {
-            background: #333;
+            background: #222;
             padding: 3px 8px;
             border-radius: 5px;
             color: #ffd700;
-            margin: 0 5px;
+            margin: 0 3px;
             font-weight: bold;
+        }
+
+        .combo-display {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 2rem;
+            font-weight: bold;
+            color: #ffd700;
+            text-shadow: 0 0 10px #ff6600;
+            pointer-events: none;
+            z-index: 100;
+            white-space: nowrap;
+            font-family: monospace;
         }
 
         .restart-btn {
@@ -91,579 +118,806 @@
             font-weight: bold;
             border-radius: 25px;
             cursor: pointer;
-            margin-top: 15px;
-            transition: transform 0.2s;
+            margin-top: 12px;
+            transition: all 0.2s;
         }
 
         .restart-btn:hover {
             transform: scale(1.05);
             background: #ffed4a;
-        }
-
-        @media (max-width: 900px) {
-            canvas {
-                width: 95%;
-                height: auto;
-            }
-            .game-header {
-                font-size: 0.8rem;
-            }
-            .score-box span, .lives-box span, .level-box span {
-                font-size: 0.9rem;
-            }
+            box-shadow: 0 0 15px #ffd700;
         }
     </style>
 </head>
 <body>
 <div class="game-container">
     <div class="game-header">
-        <div class="score-box">
-            🏆 SCORE <span id="score">0</span>
-        </div>
-        <div class="level-box">
-            📍 LEVEL <span id="level">1</span>
-        </div>
-        <div class="sidekick-box">
-            🤝 SIDEKICK <span id="sidekick">None</span>
-        </div>
-        <div class="lives-box">
-            ❤️ LIVES <span id="lives">5</span>
+        <div class="stat-panel">🏆 SCORE <span id="score">0</span></div>
+        <div class="stat-panel">🥋 COMBO <span id="combo">0</span></div>
+        <div class="stat-panel">📍 LVL <span id="level">1</span></div>
+        <div class="stat-panel">🤝 SIDEKICK <span id="sidekick">⚫ None</span></div>
+        <div class="stat-panel">❤️ HP <span id="health">120</span></div>
+        <div class="super-bar">
+            <div style="font-size:10px">🌀 SUPER METER</div>
+            <div class="super-fill" id="superFill" style="width:0%"></div>
         </div>
     </div>
-    <div class="title">⚡ BATMAN: ARKHAM KNIGHTS ⚡</div>
-    <canvas id="gameCanvas" width="1000" height="550"></canvas>
+    <canvas id="gameCanvas" width="1100" height="550"></canvas>
     <div class="controls">
-        🎮 <kbd>←</kbd> <kbd>→</kbd> Move &nbsp;| <kbd>A</kbd> Punch &nbsp;| <kbd>S</kbd> Kick &nbsp;|
-        <kbd>D</kbd> Call Sidekick &nbsp;| <kbd>R</kbd> Restart Level<br>
-        🦸‍♂️ Defeat villains to unlock Robin → Batgirl → Nightwing!
+        🎮 <kbd>←</kbd> <kbd>→</kbd> Move &nbsp;| <kbd>A</kbd> Light Punch &nbsp;| <kbd>S</kbd> Heavy Kick &nbsp;|
+        <kbd>D</kbd> Tang Soo Do Special &nbsp;| <kbd>F</kbd> SUPER (100% meter) &nbsp;| <kbd>G</kbd> Call Sidekick<br>
+        <kbd>Q</kbd> Block/Parry &nbsp;| <kbd>E</kbd> Dodge Roll &nbsp;| 🔥 Combo: A→A→S for SPIN KICK!
     </div>
-    <button class="restart-btn" onclick="restartGame()">🔄 RESTART GAME</button>
+    <button class="restart-btn" onclick="restartGame()">🔄 RESTART MISSION</button>
 </div>
+<div id="comboDisplay" class="combo-display" style="display: none;"></div>
 
 <script>
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
+    ctx.imageSmoothingEnabled = false;
 
-    // Game state
+    // ========== GAME STATE ==========
     let score = 0;
-    let lives = 5;
     let currentLevel = 1;
     let gameRunning = true;
-    let animationId = null;
-    let levelTransition = false;
-    let transitionTimer = 0;
+    let frame = 0;
+    let comboCounter = 0;
+    let comboTimeout = 0;
+    let superMeter = 0;
+    let superActive = false;
+    let superTimer = 0;
+    let blockActive = false;
+    let blockTimer = 0;
+    let dodgeActive = false;
+    let dodgeTimer = 0;
+    let invincibleFrames = 0;
+    let hitStop = 0;
+    let screenShake = 0;
 
-    // Sidekicks (unlock after beating certain levels)
+    // ========== SIDEKICKS ==========
     const SIDEKICKS = {
-        0: { name: 'None', color: '#666', unlocked: true, attack: 0 },
-        1: { name: 'Robin', color: '#00ff00', unlocked: false, attack: 15, levelReq: 2 },
-        2: { name: 'Batgirl', color: '#ff69b4', unlocked: false, attack: 25, levelReq: 4 },
-        3: { name: 'Nightwing', color: '#3399ff', unlocked: false, attack: 35, levelReq: 6 }
+        0: { name: 'None', emoji: '⚫', color: '#666', damage: 0 },
+        1: { name: 'Robin', emoji: '🤸', color: '#44ff44', damage: 25, reqLevel: 2 },
+        2: { name: 'Batgirl', emoji: '🦸‍♀️', color: '#ff69b4', damage: 40, reqLevel: 4 },
+        3: { name: 'Nightwing', emoji: '⚡', color: '#44aaff', damage: 60, reqLevel: 6 }
     };
     let currentSidekick = 0;
 
-    // Villains for each level
+    // ========== VILLAINS ==========
     const VILLAINS = {
-        1: { name: 'Scarecrow', health: 60, maxHealth: 60, attack: 8, color: '#8B4513', icon: '🌾', phrase: 'Fear will consume you!' },
-        2: { name: 'Hush', health: 80, maxHealth: 80, attack: 10, color: '#2F4F4F', icon: '🩺', phrase: 'Your life is mine!' },
-        3: { name: 'The Riddler', health: 70, maxHealth: 70, attack: 9, color: '#006400', icon: '❓', phrase: 'Riddle me this!' },
-        4: { name: 'Clayface', health: 120, maxHealth: 120, attack: 12, color: '#8B6914', icon: '🧱', phrase: 'I am everywhere!' },
-        5: { name: 'Mr. Freeze', health: 90, maxHealth: 90, attack: 11, color: '#00BFFF', icon: '❄️', phrase: 'Freeze!' },
-        6: { name: 'The Joker', health: 100, maxHealth: 100, attack: 15, color: '#9400D3', icon: '🃏', phrase: 'Why so serious?' }
+        1: { name: 'Scarecrow', health: 100, maxHealth: 100, damage: 10, color: '#8B4513', eyeColor: '#ff6600', emoji: '🌾', speed: 1.0, phrase: 'FEAR ME!', taunt: 'Your fear feeds me!' },
+        2: { name: 'Hush', health: 120, maxHealth: 120, damage: 12, color: '#2F4F4F', eyeColor: '#ff0000', emoji: '🩺', speed: 1.2, phrase: 'YOUR LIFE IS MINE!', taunt: 'I know all your secrets!' },
+        3: { name: 'Riddler', health: 110, maxHealth: 110, damage: 11, color: '#006400', eyeColor: '#00ff00', emoji: '❓', speed: 1.1, phrase: 'RIDDLE THIS!', taunt: 'Can you solve me?' },
+        4: { name: 'Clayface', health: 160, maxHealth: 160, damage: 14, color: '#8B6914', eyeColor: '#ffaa00', emoji: '🧱', speed: 0.8, phrase: 'I AM EVERYWHERE!', taunt: 'You cannot hurt me!' },
+        5: { name: 'Mr Freeze', health: 130, maxHealth: 130, damage: 13, color: '#00BFFF', eyeColor: '#88ddff', emoji: '❄️', speed: 1.0, phrase: 'FREEZE!', taunt: 'Cold never bothered me!' },
+        6: { name: 'Joker', health: 150, maxHealth: 150, damage: 16, color: '#9400D3', eyeColor: '#ff00ff', emoji: '🃏', speed: 1.4, phrase: 'WHY SO SERIOUS?', taunt: 'Let\'s put a smile on that face!' }
     };
-
-    let currentVillain = { ...VILLAINS[1] };
-
-    // Batman
-    const batman = {
-        x: 100,
-        y: canvas.height - 120,
-        width: 60,
-        height: 60,
-        attackTimer: 0,
+    
+    let currentVillain = JSON.parse(JSON.stringify(VILLAINS[1]));
+    
+    // ========== PLAYER ==========
+    const player = {
+        x: 150,
+        y: canvas.height - 110,
+        width: 48,
+        height: 48,
+        health: 120,
+        maxHealth: 120,
         isAttacking: false,
         attackType: '',
-        invincibleTimer: 0
+        attackTimer: 0,
+        attackHitbox: [],
+        invincibleTimer: 0,
+        walkCycle: 0,
+        facingRight: true,
+        blockStance: false,
+        dodgeReady: true
     };
-
-    // Sidekick on screen
-    let sidekickActive = false;
-    let sidekickAttackTimer = 0;
-
-    // Villain position
+    
+    // ========== VILLAIN AI ==========
     const villain = {
-        x: canvas.width - 150,
-        y: canvas.height - 120,
-        width: 70,
-        height: 70
+        x: canvas.width - 180,
+        y: canvas.height - 110,
+        width: 52,
+        height: 52,
+        walkCycle: 0,
+        moveDirection: -1,
+        moveTimer: 0,
+        isAttacking: false,
+        attackTimer: 0,
+        attackType: '',
+        attackCooldown: 0
     };
-
-    // Combat
-    let attackDamage = 10;
-    let comboCounter = 0;
-
-    // UI update
-    function updateUI() {
-        document.getElementById('score').innerText = score;
-        document.getElementById('lives').innerText = lives;
-        document.getElementById('level').innerText = currentLevel;
-        document.getElementById('sidekick').innerText = SIDEKICKS[currentSidekick].name;
-    }
-
-    // Unlock sidekick check
-    function checkSidekickUnlock() {
-        for (let i = 1; i <= 3; i++) {
-            if (!SIDEKICKS[i].unlocked && currentLevel >= SIDEKICKS[i].levelReq) {
-                SIDEKICKS[i].unlocked = true;
-                if (currentSidekick < i) {
-                    currentSidekick = i;
-                    playSound('unlock');
-                    showMessage(`🎉 ${SIDEKICKS[i].name} JOINED YOUR TEAM! 🎉`, 2000);
-                }
-                updateUI();
+    
+    // ========== COMBO SYSTEM ==========
+    let inputBuffer = [];
+    let lastInput = 0;
+    
+    // Tang Soo Do Special Moves!
+    const SPECIAL_MOVES = {
+        'aas': { name: '🌀 SPIN KICK', damage: 35, meter: 15, exec: ['a','a','s'] },
+        'asa': { name: '⚡ LIGHTNING PUNCH', damage: 40, meter: 20, exec: ['a','s','a'] },
+        'ssa': { name: '🔥 TIGER CLAW', damage: 45, meter: 25, exec: ['s','s','a'] },
+        'ds': { name: '🥋 TANG SOO DO CRUSH', damage: 50, meter: 30, exec: ['d','s'] },
+        'da': { name: '💥 BAT FLURRY', damage: 55, meter: 35, exec: ['d','a'] }
+    };
+    
+    function checkSpecialCombo() {
+        if (inputBuffer.length < 2) return null;
+        const comboStr = inputBuffer.join('');
+        for (let [key, move] of Object.entries(SPECIAL_MOVES)) {
+            if (comboStr.includes(key)) {
+                inputBuffer = [];
+                return move;
             }
         }
+        if (inputBuffer.length > 5) inputBuffer.shift();
+        return null;
     }
-
-    // Show temporary message
-    let tempMessage = '';
-    let messageTimer = 0;
-    function showMessage(msg, duration) {
-        tempMessage = msg;
-        messageTimer = duration;
-    }
-
-    // Attack functions
-    function punch() {
-        if (!gameRunning || levelTransition) return;
-        batman.isAttacking = true;
-        batman.attackType = 'punch';
-        batman.attackTimer = 15;
-        attackDamage = 12 + (currentSidekick * 2);
-        playSound('punch');
+    
+    // ========== ATTACKS ==========
+    const ATTACKS = {
+        lightPunch: { damage: 12, meter: 5, range: 70, speed: 10, name: 'JAB', input: 'a' },
+        heavyKick: { damage: 20, meter: 8, range: 75, speed: 15, name: 'ROUNDHOUSE', input: 's' },
+        special: { damage: 30, meter: 10, range: 80, speed: 12, name: 'TANG SOO DO', input: 'd' }
+    };
+    
+    function performAttack(attackKey) {
+        if (!gameRunning) return;
+        if (player.isAttacking) return;
+        if (attackCooldown > 0) return;
         
-        // Deal damage if in range
-        if (Math.abs(batman.x - villain.x) < 100) {
-            const damage = attackDamage;
-            currentVillain.health -= damage;
+        const attack = ATTACKS[attackKey];
+        if (!attack) return;
+        
+        player.isAttacking = true;
+        player.attackType = attackKey;
+        player.attackTimer = attack.speed;
+        attackCooldown = 20;
+        
+        playSound(attackKey === 'lightPunch' ? 'punch' : attackKey === 'heavyKick' ? 'kick' : 'special');
+        
+        // Hit detection
+        const distance = Math.abs(player.x - villain.x);
+        if (distance < attack.range) {
+            let damage = attack.damage;
+            
+            // Combo bonus
             comboCounter++;
-            score += 5;
-            updateUI();
-            playSound('hit');
-            showMessage(`PUNCH! -${damage}`, 500);
+            if (comboCounter > 1) damage += Math.min(comboCounter * 2, 20);
             
-            if (currentVillain.health <= 0) {
-                defeatVillain();
+            // Super meter gain
+            superMeter = Math.min(superMeter + attack.meter, 100);
+            updateSuperBar();
+            
+            // Critical hit on block break
+            let isCrit = false;
+            if (blockActive && distance < 50) {
+                damage += 15;
+                isCrit = true;
+                showFloatingText('GUARD BREAK!', villain.x + 20, villain.y - 30, '#ffaa00');
+                blockActive = false;
             }
-        }
-    }
-
-    function kick() {
-        if (!gameRunning || levelTransition) return;
-        batman.isAttacking = true;
-        batman.attackType = 'kick';
-        batman.attackTimer = 20;
-        attackDamage = 18 + (currentSidekick * 3);
-        playSound('kick');
-        
-        if (Math.abs(batman.x - villain.x) < 100) {
-            const damage = attackDamage;
+            
             currentVillain.health -= damage;
-            comboCounter += 2;
-            score += 8;
+            score += Math.floor(damage);
+            
+            // Screen shake
+            screenShake = 5;
+            
             updateUI();
+            showFloatingText(`${attack.name} -${damage}!${isCrit ? ' CRIT!' : ''}`, villain.x + 20, villain.y - 20, '#ff6600');
             playSound('hit');
-            showMessage(`KICK! -${damage}`, 500);
+            
+            // Hit stop for impact feel
+            hitStop = 3;
             
             if (currentVillain.health <= 0) {
                 defeatVillain();
             }
+        } else {
+            showFloatingText('MISS!', player.x + 20, player.y - 30, '#ff0000');
+            comboCounter = 0;
         }
-    }
-
-    function callSidekick() {
-        if (!gameRunning || levelTransition || currentSidekick === 0) return;
-        if (sidekickActive) return;
         
-        sidekickActive = true;
-        sidekickAttackTimer = 30;
-        playSound('sidekick');
-        
-        const sidekickDamage = SIDEKICKS[currentSidekick].attack;
-        currentVillain.health -= sidekickDamage;
-        score += 15;
-        showMessage(`${SIDEKICKS[currentSidekick].name} attacks! -${sidekickDamage}`, 800);
+        // Reset combo timeout
+        comboTimeout = 45;
         updateUI();
+    }
+    
+    let attackCooldown = 0;
+    
+    // ========== SUPER MOVE ==========
+    function superMove() {
+        if (!gameRunning) return;
+        if (superMeter < 100) {
+            showFloatingText(`Need ${100 - superMeter}% more meter!`, canvas.width/2, 150, '#ffaa00');
+            return;
+        }
+        if (player.isAttacking) return;
+        
+        superMeter = 0;
+        superActive = true;
+        superTimer = 30;
+        updateSuperBar();
+        playSound('super');
+        
+        // Multi-hit super!
+        let totalDamage = 0;
+        for (let i = 0; i < 5; i++) {
+            setTimeout(() => {
+                if (!gameRunning) return;
+                const damage = 18;
+                currentVillain.health -= damage;
+                totalDamage += damage;
+                score += 10;
+                showFloatingText(`🔥 SUPER HIT! -${damage}`, villain.x + 20 + (i * 10), villain.y - 30 + (i * 5), '#ff0066');
+                screenShake = 8;
+                updateUI();
+                if (currentVillain.health <= 0) defeatVillain();
+            }, i * 80);
+        }
+        showFloatingText('💥 BATMAN SUPER: DYNAMIC ENTRY! 💥', canvas.width/2, 120, '#ffd700');
+    }
+    
+    // ========== BLOCK/PARRY ==========
+    function blockParry() {
+        if (!gameRunning) return;
+        if (blockTimer > 0) return;
+        blockActive = true;
+        blockTimer = 30;
+        showFloatingText('🛡️ BLOCK STANCE', player.x, player.y - 30, '#88aaff');
+        playSound('block');
+    }
+    
+    // ========== DODGE ROLL ==========
+    function dodgeRoll() {
+        if (!gameRunning) return;
+        if (dodgeTimer > 0 || !player.dodgeReady) return;
+        dodgeActive = true;
+        dodgeTimer = 20;
+        invincibleFrames = 15;
+        player.dodgeReady = false;
+        
+        const dodgeDir = player.facingRight ? 50 : -50;
+        player.x = Math.min(Math.max(player.x + dodgeDir, 50), canvas.width - 200);
+        showFloatingText('💨 DODGE!', player.x, player.y - 30, '#88ffaa');
+        playSound('dodge');
+        
+        setTimeout(() => { player.dodgeReady = true; }, 600);
+    }
+    
+    // ========== CALL SIDEKICK ==========
+    function callSidekick() {
+        if (!gameRunning) return;
+        if (currentSidekick === 0) {
+            showFloatingText('Unlock sidekick at Level 2!', canvas.width/2, 150, '#ffaa00');
+            return;
+        }
+        
+        const damage = SIDEKICKS[currentSidekick].damage;
+        currentVillain.health -= damage;
+        score += 30;
+        updateUI();
+        showFloatingText(`${SIDEKICKS[currentSidekick].name} ASSIST! -${damage}!`, villain.x + 20, villain.y - 50, SIDEKICKS[currentSidekick].color);
+        playSound('sidekick');
+        screenShake = 4;
         
         if (currentVillain.health <= 0) {
             defeatVillain();
         }
     }
-
-    function defeatVillain() {
-        const levelBonus = currentLevel * 100;
-        score += levelBonus;
-        updateUI();
-        playSound('victory');
-        showMessage(`VICTORY! +${levelBonus} points!`, 1500);
-        
-        if (currentLevel < 6) {
-            levelTransition = true;
-            transitionTimer = 60;
-            currentLevel++;
-            checkSidekickUnlock();
-            
-            // Load next villain
-            setTimeout(() => {
-                currentVillain = { ...VILLAINS[currentLevel] };
-                currentVillain.health = VILLAINS[currentLevel].health;
-                levelTransition = false;
-                comboCounter = 0;
-                showMessage(`⚔️ LEVEL ${currentLevel}: ${VILLAINS[currentLevel].name} ⚔️`, 2000);
-                playSound('levelup');
-                updateUI();
-            }, 1000);
-        } else {
-            // Game complete!
-            gameRunning = false;
-            showMessage(`🎉 YOU SAVED GOTHAM! FINAL SCORE: ${score} 🎉`, 5000);
-            playSound('gameover');
-        }
-    }
-
-    // Villain attack
-    let villainAttackTimer = 0;
+    
+    // ========== VILLAIN AI - ATTACKS BACK! ==========
+    let villainSpecialTimer = 0;
     function villainAttack() {
-        if (!gameRunning || levelTransition) return;
-        
-        if (villainAttackTimer <= 0 && Math.abs(batman.x - villain.x) < 120) {
-            if (batman.invincibleTimer <= 0) {
-                const damage = currentVillain.attack;
-                lives -= damage;
-                batman.invincibleTimer = 40;
-                playSound('damage');
-                showMessage(`${currentVillain.name} hits! -${damage}`, 800);
-                updateUI();
-                
-                if (lives <= 0) {
-                    gameRunning = false;
-                    playSound('gameover');
-                    showMessage('GAME OVER - Gotham needs you!', 3000);
-                }
-            }
-            villainAttackTimer = 50;
-        } else {
-            villainAttackTimer--;
-        }
-    }
-
-    // Movement
-    const keys = { ArrowLeft: false, ArrowRight: false };
-
-    function updateGame() {
         if (!gameRunning) return;
-        if (levelTransition) return;
-        
-        // Move Batman
-        if (keys.ArrowLeft && batman.x > 50) batman.x -= 5;
-        if (keys.ArrowRight && batman.x < canvas.width - 150) batman.x += 5;
-        
-        // Update timers
-        if (batman.attackTimer > 0) batman.attackTimer--;
-        else batman.isAttacking = false;
-        
-        if (batman.invincibleTimer > 0) batman.invincibleTimer--;
-        
-        if (sidekickAttackTimer > 0) {
-            sidekickAttackTimer--;
-            if (sidekickAttackTimer <= 0) sidekickActive = false;
+        if (villain.attackCooldown > 0) {
+            villain.attackCooldown--;
+            return;
         }
         
-        if (messageTimer > 0) messageTimer--;
-        else tempMessage = '';
-        
-        villainAttack();
-    }
-
-    // Sound effects
-    function playSound(type) {
-        try {
-            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            const oscillator = audioCtx.createOscillator();
-            const gainNode = audioCtx.createGain();
-            oscillator.connect(gainNode);
-            gainNode.connect(audioCtx.destination);
+        const distance = Math.abs(player.x - villain.x);
+        if (distance < 80 && !villain.isAttacking) {
+            villain.isAttacking = true;
+            villain.attackTimer = 20;
+            villain.attackCooldown = 50;
             
-            switch(type) {
-                case 'punch':
-                    oscillator.frequency.value = 300;
-                    gainNode.gain.value = 0.15;
-                    oscillator.start();
-                    gainNode.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.1);
-                    oscillator.stop(audioCtx.currentTime + 0.1);
-                    break;
-                case 'kick':
-                    oscillator.frequency.value = 200;
-                    gainNode.gain.value = 0.2;
-                    oscillator.start();
-                    gainNode.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.15);
-                    oscillator.stop(audioCtx.currentTime + 0.15);
-                    break;
-                case 'hit':
-                    oscillator.frequency.value = 400;
-                    gainNode.gain.value = 0.1;
-                    oscillator.start();
-                    oscillator.stop(audioCtx.currentTime + 0.08);
-                    break;
-                case 'damage':
-                    oscillator.frequency.value = 150;
-                    gainNode.gain.value = 0.2;
-                    oscillator.start();
-                    gainNode.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.3);
-                    oscillator.stop(audioCtx.currentTime + 0.3);
-                    break;
-                case 'victory':
-                    oscillator.frequency.value = 600;
-                    gainNode.gain.value = 0.15;
-                    oscillator.start();
-                    gainNode.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.5);
-                    oscillator.stop(audioCtx.currentTime + 0.5);
-                    break;
-                case 'unlock':
-                    oscillator.frequency.value = 880;
-                    gainNode.gain.value = 0.2;
-                    oscillator.start();
-                    gainNode.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.4);
-                    oscillator.stop(audioCtx.currentTime + 0.4);
-                    break;
-                case 'sidekick':
-                    oscillator.frequency.value = 720;
-                    gainNode.gain.value = 0.18;
-                    oscillator.start();
-                    oscillator.stop(audioCtx.currentTime + 0.2);
-                    break;
-                case 'levelup':
-                    oscillator.frequency.value = 520;
-                    gainNode.gain.value = 0.2;
-                    oscillator.start();
-                    oscillator.stop(audioCtx.currentTime + 0.3);
-                    break;
-                case 'gameover':
-                    oscillator.frequency.value = 100;
-                    gainNode.gain.value = 0.25;
-                    oscillator.start();
-                    gainNode.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 1);
-                    oscillator.stop(audioCtx.currentTime + 1);
-                    break;
-            }
-            setTimeout(() => audioCtx.close(), 500);
-        } catch(e) {}
-    }
-
-    // Drawing
-    function draw() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        
-        // Gotham background
-        ctx.fillStyle = '#0a0a2a';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        
-        // Buildings
-        ctx.fillStyle = '#1a1a3a';
-        for (let i = 0; i < 20; i++) {
-            ctx.fillRect(30 + i * 70, canvas.height - 200 - Math.random() * 100, 40, 150 + Math.random() * 80);
-        }
-        
-        // Bat signal
-        ctx.fillStyle = '#ffd700';
-        ctx.shadowBlur = 20;
-        ctx.shadowColor = '#ffd700';
-        ctx.font = "bold 40px monospace";
-        ctx.fillText("🦇", canvas.width - 80, 70);
-        ctx.shadowBlur = 0;
-        
-        // Ground
-        ctx.fillStyle = '#2a2a3a';
-        ctx.fillRect(0, canvas.height - 70, canvas.width, 70);
-        
-        // Health bars
-        // Batman health
-        ctx.fillStyle = '#cc0000';
-        ctx.fillRect(20, 20, 200, 20);
-        ctx.fillStyle = '#00cc00';
-        ctx.fillRect(20, 20, (lives / 5) * 200, 20);
-        ctx.fillStyle = 'white';
-        ctx.font = "bold 12px monospace";
-        ctx.fillText("BATMAN HP", 20, 18);
-        
-        // Villain health
-        const healthPercent = currentVillain.health / VILLAINS[currentLevel].maxHealth;
-        ctx.fillStyle = '#cc0000';
-        ctx.fillRect(canvas.width - 220, 20, 200, 20);
-        ctx.fillStyle = '#ff4444';
-        ctx.fillRect(canvas.width - 220, 20, healthPercent * 200, 20);
-        ctx.fillStyle = 'white';
-        ctx.fillText(`${currentVillain.name} HP`, canvas.width - 220, 18);
-        
-        // Draw Batman
-        ctx.save();
-        if (batman.invincibleTimer > 0 && (Math.floor(Date.now() / 100) % 2 === 0)) {
-            ctx.globalAlpha = 0.5;
-        }
-        // Cape
-        ctx.fillStyle = '#1a1a3a';
-        ctx.beginPath();
-        ctx.moveTo(batman.x + 10, batman.y + 40);
-        ctx.lineTo(batman.x + 30, batman.y + 55);
-        ctx.lineTo(batman.x + 50, batman.y + 40);
-        ctx.fill();
-        // Body
-        ctx.fillStyle = '#0d0d1a';
-        ctx.fillRect(batman.x + 15, batman.y + 25, 30, 35);
-        // Head
-        ctx.fillStyle = '#0d0d1a';
-        ctx.beginPath();
-        ctx.ellipse(batman.x + 30, batman.y + 18, 16, 18, 0, 0, Math.PI * 2);
-        ctx.fill();
-        // Ears
-        ctx.beginPath();
-        ctx.moveTo(batman.x + 18, batman.y + 5);
-        ctx.lineTo(batman.x + 30, batman.y - 5);
-        ctx.lineTo(batman.x + 42, batman.y + 5);
-        ctx.fill();
-        // Eyes
-        ctx.fillStyle = 'white';
-        ctx.beginPath();
-        ctx.ellipse(batman.x + 23, batman.y + 15, 4, 5, 0, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.beginPath();
-        ctx.ellipse(batman.x + 37, batman.y + 15, 4, 5, 0, 0, Math.PI * 2);
-        ctx.fill();
-        // Bat symbol
-        ctx.fillStyle = '#ffd700';
-        ctx.beginPath();
-        ctx.moveTo(batman.x + 30, batman.y + 28);
-        ctx.lineTo(batman.x + 27, batman.y + 32);
-        ctx.lineTo(batman.x + 30, batman.y + 31);
-        ctx.lineTo(batman.x + 33, batman.y + 32);
-        ctx.fill();
-        
-        // Attack animation
-        if (batman.isAttacking) {
-            ctx.fillStyle = batman.attackType === 'punch' ? '#ff6600' : '#ffcc00';
-            ctx.beginPath();
-            ctx.ellipse(batman.x + 50, batman.y + 35, 20, 15, 0, 0, Math.PI * 2);
-            ctx.fill();
-        }
-        ctx.restore();
-        
-        // Draw Sidekick
-        if (sidekickActive && currentSidekick > 0) {
-            ctx.fillStyle = SIDEKICKS[currentSidekick].color;
-            ctx.font = "30px monospace";
-            ctx.fillText(SIDEKICKS[currentSidekick].name === 'Robin' ? '🤸' : 
-                        SIDEKICKS[currentSidekick].name === 'Batgirl' ? '🦸‍♀️' : '⚡', 
-                        batman.x - 40, batman.y + 30);
-        }
-        
-        // Draw Villain
-        ctx.fillStyle = currentVillain.color;
-        ctx.font = "50px monospace";
-        ctx.fillText(currentVillain.icon, villain.x + 15, villain.y + 25);
-        ctx.fillStyle = currentVillain.color;
-        ctx.fillRect(villain.x, villain.y + 35, 60, 35);
-        ctx.fillStyle = 'white';
-        ctx.font = "bold 14px monospace";
-        ctx.fillText(currentVillain.name, villain.x + 5, villain.y + 60);
-        
-        // Speech bubble
-        if (Math.random() < 0.02 && gameRunning) {
-            showMessage(currentVillain.phrase, 1500);
-        }
-        
-        // Message display
-        if (tempMessage) {
-            ctx.fillStyle = 'rgba(0,0,0,0.8)';
-            ctx.fillRect(canvas.width/2 - 150, canvas.height/2 - 40, 300, 50);
-            ctx.fillStyle = '#ffd700';
-            ctx.font = "bold 16px monospace";
-            ctx.fillText(tempMessage, canvas.width/2 - tempMessage.length * 4, canvas.height/2 - 15);
-        }
-        
-        // Game over / Victory
-        if (!gameRunning) {
-            ctx.fillStyle = 'rgba(0,0,0,0.8)';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            ctx.fillStyle = '#ffd700';
-            ctx.font = "bold 36px monospace";
-            const endText = currentLevel > 6 ? "VICTORY! GOTHAM IS SAFE!" : "GAME OVER";
-            ctx.fillText(endText, canvas.width/2 - 180, canvas.height/2 - 50);
-            ctx.font = "20px monospace";
-            ctx.fillStyle = 'white';
-            ctx.fillText(`Final Score: ${score}`, canvas.width/2 - 80, canvas.height/2 + 20);
-            ctx.font = "14px monospace";
-            ctx.fillText("Click RESTART to protect Gotham again", canvas.width/2 - 180, canvas.height/2 + 70);
+            // Random attack type
+            const attackType = Math.random() > 0.6 ? 'special' : 'normal';
+            const damage = attackType === 'special' ? currentVillain.damage + 5 : currentVillain.damage;
+            
+            setTimeout(() => {
+                if (!blockActive && distance < 80 && invincibleFrames <= 0) {
+                    player.health -= damage;
+                    updateUI();
+                    showFloatingText(`-${damage}!`, player.x + 20, player.y - 20, '#ff4444');
+                    playSound('damage');
+                    screenShake = 4;
+                    
+                    if (player.health <= 0) {
+                        gameRunning = false;
+                        showFloatingText('💀 GAME OVER 💀', canvas.width/2, 200, '#ff0000');
+                        playSound('gameover');
+                    }
+                    player.invincibleTimer = 25;
+                } else if (blockActive) {
+                    showFloatingText('PARRY!', player.x + 20, player.y - 30, '#88ff88');
+                    superMeter = Math.min(superMeter + 10, 100);
+                    updateSuperBar();
+                }
+                villain.isAttacking = false;
+            }, 300);
         }
     }
     
+    // ========== VILLAIN MOVEMENT ==========
+    function updateVillainMovement() {
+        if (!gameRunning) return;
+        villain.moveTimer++;
+        if (villain.moveTimer > 50) {
+            villain.moveDirection *= -1;
+            villain.moveTimer = 0;
+        }
+        let newX = villain.x + (villain.moveDirection * currentVillain.speed);
+        if (newX > canvas.width - 100) newX = canvas.width - 100;
+        if (newX < canvas.width - 350) newX = canvas.width - 350;
+        villain.x = newX;
+        villain.walkCycle = (villain.walkCycle + 0.2) % (Math.PI * 2);
+    }
+    
+    // ========== DEFEAT VILLAIN ==========
+    function defeatVillain() {
+        const levelBonus = currentLevel * 150;
+        score += levelBonus;
+        updateUI();
+        showFloatingText(`⭐ VICTORY! +${levelBonus} ⭐`, canvas.width/2, 150, '#ffd700');
+        playSound('victory');
+        
+        if (currentLevel < 6) {
+            currentLevel++;
+            // Unlock sidekick at level 2
+            if (currentLevel >= 2 && currentSidekick === 0) {
+                currentSidekick = 1;
+                showFloatingText(`✨ ${SIDEKICKS[1].name} JOINED YOUR TEAM! ✨`, canvas.width/2, 100, '#44ff44');
+                playSound('unlock');
+            }
+            if (currentLevel >= 4 && currentSidekick === 1) {
+                currentSidekick = 2;
+                showFloatingText(`✨ ${SIDEKICKS[2].name} JOINED YOUR TEAM! ✨`, canvas.width/2, 100, '#ff69b4');
+                playSound('unlock');
+            }
+            if (currentLevel >= 6 && currentSidekick === 2) {
+                currentSidekick = 3;
+                showFloatingText(`✨ ${SIDEKICKS[3].name} JOINED YOUR TEAM! ✨`, canvas.width/2, 100, '#44aaff');
+                playSound('unlock');
+            }
+            
+            currentVillain = JSON.parse(JSON.stringify(VILLAINS[currentLevel]));
+            player.health = Math.min(player.health + 30, player.maxHealth);
+            villain.x = canvas.width - 180;
+            updateUI();
+            showFloatingText(`⚔️ LEVEL ${currentLevel}: ${currentVillain.name}! ⚔️`, canvas.width/2, 80, '#ffaa00');
+            playSound('levelup');
+            comboCounter = 0;
+        } else {
+            gameRunning = false;
+            showFloatingText('🏆 YOU SAVED GOTHAM! 🏆', canvas.width/2, 200, '#ffd700');
+            playSound('gameover');
+        }
+    }
+    
+    // ========== UPDATE FUNCTION ==========
+    let sidekickCooldown = 0;
+    
+    function updateGame() {
+        if (!gameRunning) return;
+        
+        frame++;
+        if (attackCooldown > 0) attackCooldown--;
+        if (comboTimeout > 0) {
+            comboTimeout--;
+            if (comboTimeout <= 0) comboCounter = 0;
+        }
+        if (blockTimer > 0) {
+            blockTimer--;
+            if (blockTimer <= 0) blockActive = false;
+        }
+        if (dodgeTimer > 0) {
+            dodgeTimer--;
+            if (dodgeTimer <= 0) dodgeActive = false;
+        }
+        if (invincibleFrames > 0) invincibleFrames--;
+        if (hitStop > 0) hitStop--;
+        if (screenShake > 0) screenShake--;
+        if (player.attackTimer > 0) player.attackTimer--;
+        else player.isAttacking = false;
+        if (superTimer > 0) {
+            superTimer--;
+            if (superTimer <= 0) superActive = false;
+        }
+        
+        // Update floating texts
+        for (let i = 0; i < floatingTexts.length; i++) {
+            floatingTexts[i].life--;
+            floatingTexts[i].y -= 1.2;
+            if (floatingTexts[i].life <= 0) {
+                floatingTexts.splice(i, 1);
+                i--;
+            }
+        }
+        
+        // Player movement
+        const keys = window.keys || {};
+        if (keys.ArrowLeft && player.x > 50 && !dodgeActive) {
+            player.x -= 5;
+            player.walkCycle = (player.walkCycle + 0.3) % (Math.PI * 2);
+            player.facingRight = false;
+        }
+        if (keys.ArrowRight && player.x < canvas.width - 200 && !dodgeActive) {
+            player.x += 5;
+            player.walkCycle = (player.walkCycle + 0.3) % (Math.PI * 2);
+            player.facingRight = true;
+        }
+        
+        updateVillainMovement();
+        villainAttack();
+    }
+    
+    // ========== UI UPDATES ==========
+    function updateUI() {
+        document.getElementById('score').innerText = score;
+        document.getElementById('combo').innerText = comboCounter;
+        document.getElementById('level').innerText = currentLevel;
+        document.getElementById('health').innerText = player.health;
+        document.getElementById('sidekick').innerHTML = SIDEKICKS[currentSidekick].emoji + ' ' + SIDEKICKS[currentSidekick].name;
+        
+        // Show combo display
+        const comboDisplay = document.getElementById('comboDisplay');
+        if (comboCounter > 1) {
+            comboDisplay.style.display = 'block';
+            comboDisplay.innerText = `${comboCounter} HIT COMBO!`;
+            comboDisplay.style.color = comboCounter > 5 ? '#ff6600' : '#ffd700';
+            setTimeout(() => {
+                if (comboCounter <= 1) comboDisplay.style.display = 'none';
+            }, 300);
+        } else {
+            comboDisplay.style.display = 'none';
+        }
+    }
+    
+    function updateSuperBar() {
+        document.getElementById('superFill').style.width = `${superMeter}%`;
+    }
+    
+    // ========== VISUAL EFFECTS ==========
+    let floatingTexts = [];
+    function showFloatingText(text, x, y, color) {
+        floatingTexts.push({ text, x, y, color, life: 50 });
+    }
+    
+    // ========== DRAWING ==========
+    function drawBatman() {
+        const px = player.x;
+        const py = player.y;
+        const invincible = player.invincibleTimer > 0 && (Math.floor(Date.now() / 50) % 2 === 0);
+        if (invincible) ctx.globalAlpha = 0.5;
+        
+        // Shadow
+        ctx.fillStyle = 'rgba(0,0,0,0.3)';
+        ctx.fillRect(px + 8, py + 45, 32, 8);
+        
+        // Cape
+        ctx.fillStyle = '#1a1a3a';
+        ctx.fillRect(px - (player.facingRight ? 10 : 5), py + 20, 15, 28);
+        
+        // Body
+        ctx.fillStyle = '#0d0d1a';
+        ctx.fillRect(px + 10, py + 25, 28, 22);
+        
+        // Chest symbol
+        ctx.fillStyle = superActive ? '#ff0066' : '#ffd700';
+        ctx.fillRect(px + 20, py + 32, 8, 6);
+        
+        // Belt
+        ctx.fillStyle = '#ffd700';
+        ctx.fillRect(px + 10, py + 42, 28, 4);
+        
+        // Head
+        ctx.fillStyle = '#0d0d1a';
+        ctx.fillRect(px + 14, py + 10, 20, 18);
+        
+        // Ears
+        ctx.fillRect(px + 16, py + 2, 4, 12);
+        ctx.fillRect(px + 28, py + 2, 4, 12);
+        
+        // Eyes
+        ctx.fillStyle = superActive ? '#ff0066' : '#ffffff';
+        ctx.fillRect(px + 18, py + 15, 5, 4);
+        ctx.fillRect(px + 25, py + 15, 5, 4);
+        
+        // Pupils
+        ctx.fillStyle = '#000000';
+        ctx.fillRect(px + (player.facingRight ? 21 : 19), py + 16, 2, 3);
+        ctx.fillRect(px + (player.facingRight ? 28 : 26), py + 16, 2, 3);
+        
+        // Block stance visual
+        if (blockActive) {
+            ctx.fillStyle = 'rgba(100,150,255,0.3)';
+            ctx.fillRect(px - 10, py - 10, 68, 68);
+        }
+        
+        // Attack effects
+        if (player.isAttacking) {
+            ctx.fillStyle = player.attackType === 'lightPunch' ? '#ffaa44' : 
+                           player.attackType === 'heavyKick' ? '#ff6644' : '#ff44ff';
+            const offset = player.facingRight ? 40 : -25;
+            ctx.fillRect(px + 30 + (player.facingRight ? 10 : -20), py + 28, 25, 15);
+        }
+        
+        ctx.globalAlpha = 1;
+    }
+    
+    function drawVillain() {
+        const vx = villain.x;
+        const vy = villain.y;
+        const walkOffset = Math.sin(villain.walkCycle) * 3;
+        
+        ctx.fillStyle = 'rgba(0,0,0,0.3)';
+        ctx.fillRect(vx + 8, vy + 48, 36, 6);
+        
+        ctx.fillStyle = currentVillain.color;
+        ctx.fillRect(vx + 8, vy + 20, 36, 28);
+        
+        ctx.fillStyle = currentVillain.color;
+        ctx.fillRect(vx + 12, vy + 6, 28, 18);
+        
+        ctx.fillStyle = currentVillain.eyeColor;
+        ctx.fillRect(vx + 18, vy + 12, 6, 5);
+        ctx.fillRect(vx + 28, vy + 12, 6, 5);
+        
+        ctx.fillStyle = '#000000';
+        ctx.fillRect(vx + 20 + (Math.sin(frame * 0.1) * 1), vy + 13, 2, 3);
+        ctx.fillRect(vx + 30 + (Math.sin(frame * 0.1) * 1), vy + 13, 2, 3);
+        
+        // Angry mouth
+        ctx.fillStyle = '#440000';
+        ctx.fillRect(vx + 20, vy + 20, 12, 4);
+        
+        ctx.font = "28px monospace";
+        ctx.fillStyle = '#ffffff';
+        ctx.shadowBlur = 4;
+        ctx.fillText(currentVillain.emoji, vx + 14, vy - 8);
+        ctx.shadowBlur = 0;
+        
+        ctx.font = "bold 10px monospace";
+        ctx.fillStyle = '#ffd700';
+        ctx.fillText(currentVillain.name, vx + 12, vy - 12);
+        
+        // Attack flash
+        if (villain.isAttacking) {
+            ctx.fillStyle = 'rgba(255,0,0,0.4)';
+            ctx.fillRect(vx - 10, vy - 10, 72, 72);
+        }
+    }
+    
+    function drawSidekick() {
+        if (currentSidekick === 0) return;
+        const sx = player.x - 50;
+        const sy = player.y - 15;
+        ctx.font = "36px monospace";
+        ctx.fillStyle = SIDEKICKS[currentSidekick].color;
+        ctx.fillText(SIDEKICKS[currentSidekick].emoji, sx, sy);
+        ctx.font = "9px monospace";
+        ctx.fillStyle = '#ffd700';
+        ctx.fillText(SIDEKICKS[currentSidekick].name, sx + 8, sy + 20);
+    }
+    
+    function drawEffects() {
+        for (let ft of floatingTexts) {
+            ctx.font = "bold 14px monospace";
+            ctx.fillStyle = ft.color;
+            ctx.shadowBlur = 3;
+            ctx.fillText(ft.text, ft.x + (screenShake * (Math.random() - 0.5)), ft.y + (screenShake * (Math.random() - 0.5)));
+        }
+        ctx.shadowBlur = 0;
+    }
+    
+    function drawBackground() {
+        const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+        grad.addColorStop(0, '#0a0a2a');
+        grad.addColorStop(1, '#1a1a3a');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // Buildings
+        ctx.fillStyle = '#152238';
+        for (let i = 0; i < 12; i++) {
+            ctx.fillRect(40 + i * 85, canvas.height - 80 - (60 + Math.sin(i) * 40), 35, 60 + Math.sin(i) * 40);
+            ctx.fillStyle = '#ffaa33';
+            for (let w = 0; w < 2; w++) {
+                ctx.fillRect(48 + i * 85 + w * 12, canvas.height - 70 - (60 + Math.sin(i) * 40) + w * 18, 4, 6);
+            }
+            ctx.fillStyle = '#152238';
+        }
+        
+        ctx.fillStyle = '#ffd700';
+        ctx.font = "30px monospace";
+        ctx.fillText("🦇", canvas.width - 60, 65);
+        
+        ctx.fillStyle = '#2a2a3a';
+        ctx.fillRect(0, canvas.height - 55, canvas.width, 55);
+        
+        // Dojo / fighting stage look
+        ctx.fillStyle = '#3a3a4a';
+        for (let i = 0; i < 20; i++) {
+            ctx.fillRect(i * 55, canvas.height - 55, 30, 4);
+        }
+    }
+    
+    function drawHealthBars() {
+        // Player
+        ctx.fillStyle = '#330000';
+        ctx.fillRect(20, 15, 250, 18);
+        ctx.fillStyle = '#00cc00';
+        ctx.fillRect(20, 15, 250 * (player.health / player.maxHealth), 18);
+        ctx.fillStyle = '#ffffff';
+        ctx.font = "bold 10px monospace";
+        ctx.fillText("BATMAN", 25, 30);
+        
+        // Villain
+        ctx.fillStyle = '#330000';
+        ctx.fillRect(canvas.width - 270, 15, 250, 18);
+        ctx.fillStyle = '#cc0000';
+        ctx.fillRect(canvas.width - 270, 15, 250 * (currentVillain.health / currentVillain.maxHealth), 18);
+        ctx.fillText(currentVillain.name, canvas.width - 265, 30);
+    }
+    
+    function drawScreenShake() {
+        if (screenShake > 0) {
+            ctx.translate(Math.random() * screenShake - screenShake/2, Math.random() * screenShake - screenShake/2);
+        }
+    }
+    
+    function draw() {
+        drawBackground();
+        drawHealthBars();
+        drawVillain();
+        drawBatman();
+        drawSidekick();
+        drawEffects();
+        
+        // Villain taunt
+        if (Math.random() < 0.008 && gameRunning && currentVillain.health < currentVillain.maxHealth * 0.5) {
+            showFloatingText(currentVillain.taunt, villain.x + 15, villain.y - 35, '#ffaaaa');
+        }
+        
+        if (!gameRunning) {
+            ctx.fillStyle = 'rgba(0,0,0,0.85)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.font = "bold 28px monospace";
+            ctx.fillStyle = '#ffd700';
+            ctx.fillText(player.health <= 0 ? '💀 GAME OVER 💀' : '🏆 VICTORY! 🏆', canvas.width/2 - 140, canvas.height/2 - 30);
+            ctx.font = "14px monospace";
+            ctx.fillStyle = '#ffffff';
+            ctx.fillText(`Final Score: ${score}`, canvas.width/2 - 60, canvas.height/2 + 20);
+            ctx.fillText("Click RESTART to defend Gotham again", canvas.width/2 - 160, canvas.height/2 + 70);
+        }
+        
+        drawScreenShake();
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+    }
+    
+    // ========== GAME LOOP ==========
     function gameLoop() {
-        updateGame();
+        if (hitStop <= 0) updateGame();
         draw();
         animationId = requestAnimationFrame(gameLoop);
     }
     
+    // ========== RESTART ==========
     function restartGame() {
         gameRunning = true;
-        levelTransition = false;
         score = 0;
-        lives = 5;
         currentLevel = 1;
+        player.health = 120;
+        player.x = 150;
         currentSidekick = 0;
-        batman.x = 100;
-        currentVillain = { ...VILLAINS[1] };
-        currentVillain.health = VILLAINS[1].health;
+        superMeter = 0;
+        comboCounter = 0;
+        floatingTexts = [];
+        inputBuffer = [];
+        updateSuperBar();
         
-        // Reset sidekick unlocks
-        for (let i = 1; i <= 3; i++) {
-            SIDEKICKS[i].unlocked = false;
-        }
-        
+        currentVillain = JSON.parse(JSON.stringify(VILLAINS[1]));
+        villain.x = canvas.width - 180;
         updateUI();
         playSound('levelup');
-        showMessage("BATMAN RETURNS!", 1500);
     }
     
-    // Keyboard controls
+    // ========== SOUND EFFECTS ==========
+    function playSound(type) {
+        try {
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            switch(type) {
+                case 'punch': osc.frequency.value = 350; gain.gain.value = 0.12; osc.start(); gain.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.1); osc.stop(audioCtx.currentTime + 0.1); break;
+                case 'kick': osc.frequency.value = 250; gain.gain.value = 0.15; osc.start(); osc.stop(audioCtx.currentTime + 0.12); break;
+                case 'special': osc.frequency.value = 550; gain.gain.value = 0.18; osc.start(); osc.stop(audioCtx.currentTime + 0.15); break;
+                case 'hit': osc.frequency.value = 700; gain.gain.value = 0.1; osc.start(); osc.stop(audioCtx.currentTime + 0.06); break;
+                case 'damage': osc.frequency.value = 180; gain.gain.value = 0.2; osc.start(); gain.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.25); osc.stop(audioCtx.currentTime + 0.25); break;
+                case 'super': osc.frequency.value = 880; gain.gain.value = 0.25; osc.start(); osc.stop(audioCtx.currentTime + 0.4); break;
+                case 'sidekick': osc.frequency.value = 1046; gain.gain.value = 0.2; osc.start(); osc.stop(audioCtx.currentTime + 0.25); break;
+                case 'victory': osc.frequency.value = 660; gain.gain.value = 0.15; osc.start(); gain.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.6); osc.stop(audioCtx.currentTime + 0.6); break;
+                case 'unlock': osc.frequency.value = 1318; gain.gain.value = 0.2; osc.start(); osc.stop(audioCtx.currentTime + 0.3); break;
+                case 'levelup': osc.frequency.value = 523; gain.gain.value = 0.2; osc.start(); osc.stop(audioCtx.currentTime + 0.3); break;
+                case 'gameover': osc.frequency.value = 100; gain.gain.value = 0.25; osc.start(); gain.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 1); osc.stop(audioCtx.currentTime + 1); break;
+                case 'block': osc.frequency.value = 200; gain.gain.value = 0.1; osc.start(); osc.stop(audioCtx.currentTime + 0.08); break;
+                case 'dodge': osc.frequency.value = 440; gain.gain.value = 0.1; osc.start(); osc.stop(audioCtx.currentTime + 0.1); break;
+            }
+            setTimeout(() => audioCtx.close(), 500);
+        } catch(e) {}
+    }
+    
+    // ========== KEYBOARD CONTROLS with Combo System ==========
+    window.keys = {};
     window.addEventListener('keydown', (e) => {
-        if (e.key === 'ArrowLeft') keys.ArrowLeft = true;
-        if (e.key === 'ArrowRight') keys.ArrowRight = true;
-        if (e.key === 'a' || e.key === 'A') { e.preventDefault(); punch(); }
-        if (e.key === 's' || e.key === 'S') { e.preventDefault(); kick(); }
-        if (e.key === 'd' || e.key === 'D') { e.preventDefault(); callSidekick(); }
-        if (e.key === 'r' || e.key === 'R') { e.preventDefault(); restartGame(); }
+        const key = e.key.toLowerCase();
+        if (key === 'arrowleft') keys.ArrowLeft = true;
+        if (key === 'arrowright') keys.ArrowRight = true;
+        
+        // Combat inputs with combo buffer
+        if (key === 'a') { e.preventDefault(); performAttack('lightPunch'); inputBuffer.push('a'); }
+        else if (key === 's') { e.preventDefault(); performAttack('heavyKick'); inputBuffer.push('s'); }
+        else if (key === 'd') { e.preventDefault(); performAttack('special'); inputBuffer.push('d'); }
+        else if (key === 'f') { e.preventDefault(); superMove(); }
+        else if (key === 'g') { e.preventDefault(); callSidekick(); }
+        else if (key === 'q') { e.preventDefault(); blockParry(); }
+        else if (key === 'e') { e.preventDefault(); dodgeRoll(); }
+        else if (key === 'r') { e.preventDefault(); restartGame(); }
+        
+        // Check for special combos
+        const specialMove = checkSpecialCombo();
+        if (specialMove && !player.isAttacking && attackCooldown <= 0) {
+            currentVillain.health -= specialMove.damage;
+            superMeter = Math.min(superMeter + specialMove.meter, 100);
+            updateSuperBar();
+            score += specialMove.damage;
+            updateUI();
+            showFloatingText(specialMove.name + ` -${specialMove.damage}!`, villain.x + 20, villain.y - 30, '#ff44ff');
+            playSound('special');
+            screenShake = 8;
+            if (currentVillain.health <= 0) defeatVillain();
+        }
     });
     
     window.addEventListener('keyup', (e) => {
-        if (e.key === 'ArrowLeft') keys.ArrowLeft = false;
-        if (e.key === 'ArrowRight') keys.ArrowRight = false;
+        const key = e.key.toLowerCase();
+        if (key === 'arrowleft') keys.ArrowLeft = false;
+        if (key === 'arrowright') keys.ArrowRight = false;
     });
     
-    // Mobile touch
-    let lastTouchX = null;
+    // Mobile controls
     canvas.addEventListener('touchstart', (e) => {
         e.preventDefault();
         const rect = canvas.getBoundingClientRect();
         const touchX = e.touches[0].clientX - rect.left;
-        if (touchX < canvas.width / 2) punch();
-        else kick();
+        if (touchX < canvas.width / 5) performAttack('lightPunch');
+        else if (touchX < canvas.width * 2/5) performAttack('heavyKick');
+        else if (touchX < canvas.width * 3/5) performAttack('special');
+        else if (touchX < canvas.width * 4/5) callSidekick();
+        else superMove();
     });
+    
     canvas.addEventListener('touchmove', (e) => {
         e.preventDefault();
         const rect = canvas.getBoundingClientRect();
         const touchX = e.touches[0].clientX - rect.left;
-        if (touchX) {
-            batman.x = Math.min(Math.max(touchX - batman.width/2, 50), canvas.width - 150);
-        }
+        player.x = Math.min(Math.max(touchX - 25, 50), canvas.width - 200);
     });
     
     updateUI();
@@ -671,3 +925,4 @@
 </script>
 </body>
 </html>
+       
