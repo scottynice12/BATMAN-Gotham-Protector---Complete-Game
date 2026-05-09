@@ -3,75 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>BATMAN: Gotham Knights</title>
+    <title>BATMAN: Gotham Knights – Pixel Brawler</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            user-select: none;
-        }
-        body {
-            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%);
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-family: 'Courier New', monospace;
-        }
-        .game-container {
-            text-align: center;
-            padding: 20px;
-        }
-        canvas {
-            border: 4px solid #ffd700;
-            border-radius: 8px;
-            background: #0a0a2a;
-            cursor: pointer;
-            image-rendering: crisp-edges;
-            image-rendering: pixelated;
-        }
-        .game-header {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 15px;
-            flex-wrap: wrap;
-            gap: 10px;
-        }
-        .stat-panel {
-            background: rgba(0,0,0,0.85);
-            padding: 6px 12px;
-            border-radius: 8px;
-            border: 1px solid gold;
-            color: gold;
-            font-size: 12px;
-        }
-        .stat-panel span {
-            color: white;
-            font-size: 1.2rem;
-            margin-left: 5px;
-        }
-        .controls {
-            margin-top: 12px;
-            color: #aaa;
-            font-size: 0.7rem;
-        }
-        .controls kbd {
-            background: #222;
-            padding: 2px 6px;
-            border-radius: 4px;
-            color: gold;
-        }
-        .restart-btn {
-            background: gold;
-            color: #1a1a2e;
-            border: none;
-            padding: 6px 16px;
-            border-radius: 20px;
-            cursor: pointer;
-            margin-top: 12px;
-            font-weight: bold;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; }
+        body { background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%); min-height: 100vh; display: flex; justify-content: center; align-items: center; font-family: 'Courier New', monospace; }
+        .game-container { text-align: center; padding: 20px; }
+        canvas { border: 4px solid #ffd700; border-radius: 8px; background: #0a0a2a; cursor: pointer; image-rendering: crisp-edges; image-rendering: pixelated; }
+        .game-header { display: flex; justify-content: space-between; margin-bottom: 15px; flex-wrap: wrap; gap: 10px; }
+        .stat-panel { background: rgba(0,0,0,0.85); padding: 6px 12px; border-radius: 8px; border: 1px solid gold; color: gold; font-size: 12px; }
+        .stat-panel span { color: white; font-size: 1.2rem; margin-left: 5px; }
+        .controls { margin-top: 12px; color: #aaa; font-size: 0.7rem; }
+        .controls kbd { background: #222; padding: 2px 6px; border-radius: 4px; color: gold; }
+        .restart-btn { background: gold; color: #1a1a2e; border: none; padding: 6px 16px; border-radius: 20px; cursor: pointer; margin-top: 12px; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -109,9 +52,8 @@
     let blockTimer = 0;
     let timeLeft = 180;
     let timerInterval = null;
-    let shakeAmount = 0;
 
-    // ========== SIDEKICKS (Nightwing moves!) ==========
+    // ========== NIGHTWING (movable sidekick) ==========
     let nightwingActive = false;
     let nightwing = { x: 0, y: 0, active: false, attackTimer: 0, moveTimer: 0 };
     let currentSidekickLevel = 0; // 0=none,1=Robin,2=Batgirl,3=Nightwing
@@ -133,7 +75,7 @@
     const player = { x: 150, y: canvas.height - 120, width: 40, height: 48, health: 100, maxHealth: 100, isAttacking: false, attackTimer: 0, facingRight: true, attackType: '' };
     const villain = { x: canvas.width - 200, y: canvas.height - 120, width: 44, height: 48, isAttacking: false, attackTimer: 0, attackCooldown: 0, moveDirection: -1, moveTimer: 0 };
 
-    // ========== UI UPDATES ==========
+    // ========== UI ==========
     function updateUI() {
         document.getElementById('score').innerText = score;
         document.getElementById('levelName').innerHTML = currentLevelData.name;
@@ -176,7 +118,7 @@
         updateUI();
     }
 
-    // ========== NIGHTWING AI (moves and attacks on his own!) ==========
+    // ========== NIGHTWING AI (moves and attacks) ==========
     function updateNightwing() {
         if (currentSidekickLevel !== 3) return;
         if (!nightwingActive) {
@@ -185,7 +127,6 @@
             nightwing.y = player.y;
         }
         if (nightwing.active) {
-            // Move toward villain
             if (nightwing.x < villain.x - 80) nightwing.x += 2.5;
             if (nightwing.x > villain.x - 80) nightwing.x -= 1;
             if (nightwing.x < player.x - 100) nightwing.x = player.x - 90;
@@ -223,7 +164,7 @@
         if (currentVillainHealth <= 0) defeatVillain();
     }
 
-    // ========== ATTACKS ==========
+    // ========== PLAYER ATTACKS ==========
     function punch() {
         if (!gameRunning || attackCooldown > 0 || player.isAttacking) return;
         player.isAttacking = true; player.attackType = 'punch'; player.attackTimer = 10; attackCooldown = 20;
@@ -248,28 +189,39 @@
         showText('🛡️ BLOCK!', player.x, player.y - 30, '#88aaff');
     }
 
-    // ========== VILLAIN AI ==========
+    // ========== VILLAIN ATTACK (ALL LEVELS) ==========
     function villainAttack() {
         if (!gameRunning) return;
         if (villain.attackCooldown > 0) { villain.attackCooldown--; return; }
         if (Math.abs(player.x - villain.x) < 100 && !villain.isAttacking) {
-            villain.isAttacking = true; villain.attackTimer = 15; villain.attackCooldown = 45;
+            villain.isAttacking = true;
+            villain.attackTimer = 15;
+            villain.attackCooldown = 45;
             setTimeout(() => {
                 if (!gameRunning) return;
                 if (Math.abs(player.x - villain.x) < 100) {
-                    if (blockActive) { showText('BLOCKED!', player.x + 20, player.y - 30, '#88ff88'); blockActive = false; }
-                    else if (invincibleFrames <= 0) {
-                        player.health -= currentLevelData.damage;
-                        damageFlash = 15; invincibleFrames = 25; updateUI();
-                        showText(`-${currentLevelData.damage}!`, player.x + 20, player.y - 20, '#ff4444');
-                        if (player.health <= 0) { gameRunning = false; if (timerInterval) clearInterval(timerInterval); }
+                    if (blockActive) {
+                        showText('BLOCKED!', player.x + 20, player.y - 30, '#88ff88');
+                        blockActive = false;
+                    } else if (invincibleFrames <= 0) {
+                        let dmg = currentLevelData.damage;
+                        player.health -= dmg;
+                        damageFlash = 15;
+                        invincibleFrames = 25;
+                        updateUI();
+                        showText(`-${dmg}!`, player.x + 20, player.y - 20, '#ff4444');
+                        if (player.health <= 0) {
+                            gameRunning = false;
+                            if (timerInterval) clearInterval(timerInterval);
+                        }
                     }
                 }
                 villain.isAttacking = false;
-            }, 350);
+            }, 300);
         }
     }
 
+    // ========== VILLAIN MOVEMENT ==========
     function updateVillainMovement() {
         villain.moveTimer++;
         if (villain.moveTimer > 60) { villain.moveDirection *= -1; villain.moveTimer = 0; }
@@ -293,6 +245,8 @@
             player.health = Math.min(player.health + 30, 100);
             timeLeft += 30;
             document.getElementById('timer').innerText = timeLeft;
+            villain.isAttacking = false;
+            villain.attackCooldown = 0;
             checkSidekickUnlock();
             updateUI();
             showText(`📍 ${currentLevelData.name}`, canvas.width/2, 80, '#ffaa00');
@@ -303,22 +257,23 @@
         }
     }
 
-    // ========== VISUALS ==========
+    // ========== VISUAL EFFECTS ==========
     let floatingTexts = [];
     function showText(msg, x, y, color) { floatingTexts.push({ text: msg, x, y, color, life: 50 }); }
 
-    // Drawing functions (pixel art)
+    // ========== IMPROVED PIXEL ART ==========
+
     function drawBackground() {
         const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
         grad.addColorStop(0, currentLevelData.bg1); grad.addColorStop(1, currentLevelData.bg2);
         ctx.fillStyle = grad; ctx.fillRect(0, 0, canvas.width, canvas.height);
-        // quick level decorations
         ctx.fillStyle = currentLevelData.ground;
         ctx.fillRect(0, canvas.height - 65, canvas.width, 65);
         ctx.fillStyle = 'gold';
         ctx.font = "bold 10px monospace";
         ctx.fillText(currentLevelData.name, canvas.width/2 - 60, canvas.height - 10);
     }
+
     function drawBatman() {
         let px = player.x, py = player.y;
         if (invincibleFrames > 0 && (Math.floor(Date.now()/50)%2===0)) ctx.globalAlpha = 0.5;
@@ -337,17 +292,85 @@
         }
         ctx.globalAlpha = 1;
     }
+
+    // Batgirl – purple suit, yellow bat, black hair
+    function drawBatgirlIcon(x, y) {
+        ctx.fillStyle = '#6a0dad'; ctx.fillRect(x+8, y+18, 28, 26); // body
+        ctx.fillStyle = '#ffd700'; ctx.fillRect(x+18, y+28, 8, 6);  // bat symbol
+        ctx.fillStyle = '#ffd700'; ctx.fillRect(x+8, y+40, 28, 4);  // belt
+        ctx.fillStyle = '#5a2d6a'; ctx.fillRect(x+12, y+6, 20, 16); // head
+        ctx.fillStyle = '#000000'; ctx.fillRect(x+14, y+2, 16, 6);  // hair
+        ctx.fillStyle = '#ffffff'; ctx.fillRect(x+16, y+12, 4, 4);   // left eye
+        ctx.fillStyle = '#ffffff'; ctx.fillRect(x+24, y+12, 4, 4);   // right eye
+        ctx.fillStyle = '#000000'; ctx.fillRect(x+17, y+13, 2, 2);
+        ctx.fillStyle = '#000000'; ctx.fillRect(x+25, y+13, 2, 2);
+        ctx.fillStyle = '#c0a0c0'; ctx.fillRect(x+18, y+18, 8, 3);   // mouth
+    }
+
+    // Nightwing (moving sprite) – black, blue bird, escrima sticks
+    function drawNightwingSprite(nx, ny) {
+        ctx.fillStyle = '#111111'; ctx.fillRect(nx+8, ny+18, 28, 26); // body
+        ctx.fillStyle = '#44aaff'; ctx.fillRect(nx+18, ny+28, 8, 6);   // bird emblem
+        ctx.fillStyle = '#44aaff'; ctx.fillRect(nx+8, ny+40, 28, 4);    // blue belt
+        ctx.fillStyle = '#222222'; ctx.fillRect(nx+12, ny+6, 20, 16);   // head
+        ctx.fillStyle = '#44aaff'; ctx.fillRect(nx+14, ny+10, 16, 4);   // domino mask
+        ctx.fillStyle = '#ffffff'; ctx.fillRect(nx+16, ny+12, 4, 4);     // eyes
+        ctx.fillStyle = '#ffffff'; ctx.fillRect(nx+24, ny+12, 4, 4);
+        ctx.fillStyle = '#000000'; ctx.fillRect(nx+17, ny+13, 2, 2);
+        ctx.fillStyle = '#000000'; ctx.fillRect(nx+25, ny+13, 2, 2);
+        // escrima sticks (when idle or attacking)
+        ctx.fillStyle = '#cccc99';
+        ctx.fillRect(nx+4, ny+28, 4, 12);
+        ctx.fillRect(nx+36, ny+28, 4, 12);
+        if (nightwing.attackTimer > 0) {
+            ctx.fillStyle = '#ffff00';
+            ctx.fillRect(nx+38, ny+28, 12, 8);
+        }
+    }
+
+    // Robin – red/green classic
+    function drawRobinIcon(x, y) {
+        ctx.fillStyle = '#cc0000'; ctx.fillRect(x+8, y+18, 28, 26);  // red tunic
+        ctx.fillStyle = '#00aa44'; ctx.fillRect(x+6, y+40, 32, 6);    // green belt/boots
+        ctx.fillStyle = '#ffd700'; ctx.fillRect(x+12, y+6, 20, 16);   // yellow cape? we simplify
+        ctx.fillStyle = '#00aa44'; ctx.fillRect(x+14, y+2, 16, 6);    // green mask area
+        ctx.fillStyle = '#ffffff'; ctx.fillRect(x+16, y+12, 4, 4);
+        ctx.fillStyle = '#ffffff'; ctx.fillRect(x+24, y+12, 4, 4);
+        ctx.fillStyle = '#000000'; ctx.fillRect(x+17, y+13, 2, 2);
+        ctx.fillStyle = '#000000'; ctx.fillRect(x+25, y+13, 2, 2);
+    }
+
     function drawNightwing() {
         if (currentSidekickLevel !== 3 || !nightwing.active) return;
-        let nx = nightwing.x, ny = nightwing.y;
-        ctx.fillStyle = '#00000033'; ctx.fillRect(nx+5, ny+45, 30, 5);
-        ctx.fillStyle = '#111111'; ctx.fillRect(nx+8, ny+22, 28, 24);
-        ctx.fillStyle = '#44aaff'; ctx.fillRect(nx+20, ny+32, 6, 6);
-        ctx.fillStyle = '#222222'; ctx.fillRect(nx+12, ny+8, 20, 16);
-        ctx.fillStyle = '#44aaff'; ctx.fillRect(nx+14, ny+13, 16, 5);
-        ctx.fillStyle = '#ffffff'; ctx.fillRect(nx+16, ny+14, 4, 3); ctx.fillRect(nx+24, ny+14, 4, 3);
-        if (nightwing.attackTimer > 0) { ctx.fillStyle = '#44aaff'; ctx.fillRect(nx+35, ny+28, 18, 10); }
+        drawNightwingSprite(nightwing.x, nightwing.y);
     }
+
+    function drawSidekickIcon() {
+        if (currentSidekickLevel === 1) {
+            drawRobinIcon(20, canvas.height-48);
+            if (sidekickCooldown > 0) {
+                ctx.fillStyle = '#333366'; ctx.fillRect(20, canvas.height-58, 80, 5);
+                ctx.fillStyle = 'gold'; ctx.fillRect(20, canvas.height-58, 80*(1-sidekickCooldown/60), 5);
+            }
+        }
+        else if (currentSidekickLevel === 2) {
+            drawBatgirlIcon(20, canvas.height-48);
+            if (sidekickCooldown > 0) {
+                ctx.fillStyle = '#333366'; ctx.fillRect(20, canvas.height-58, 80, 5);
+                ctx.fillStyle = '#ff69b4'; ctx.fillRect(20, canvas.height-58, 80*(1-sidekickCooldown/60), 5);
+            }
+        }
+        else if (currentSidekickLevel === 3) {
+            // Nightwing icon small (also drawn moving, but add a mini icon)
+            ctx.fillStyle = '#111111'; ctx.fillRect(20, canvas.height-48, 28, 26);
+            ctx.fillStyle = '#44aaff'; ctx.fillRect(30, canvas.height-36, 8, 6);
+            if (sidekickCooldown > 0) {
+                ctx.fillStyle = '#333366'; ctx.fillRect(20, canvas.height-58, 80, 5);
+                ctx.fillStyle = '#44aaff'; ctx.fillRect(20, canvas.height-58, 80*(1-sidekickCooldown/60), 5);
+            }
+        }
+    }
+
     function drawVillain() {
         let vx = villain.x, vy = villain.y;
         let percent = currentVillainHealth / currentVillainMaxHealth;
@@ -361,20 +384,14 @@
         ctx.font = "24px monospace"; ctx.fillStyle = '#ffffff'; ctx.fillText(currentLevelData.emoji, vx+12, vy-5);
         if (villain.isAttacking) { ctx.fillStyle = 'rgba(255,50,50,0.4)'; ctx.fillRect(vx-10, vy-10, 70, 70); }
     }
-    function drawSidekickIcon() {
-        if (currentSidekickLevel === 1) { ctx.font = "28px monospace"; ctx.fillStyle = '#44ff44'; ctx.fillText('🤸', 20, canvas.height-40); ctx.fillStyle = 'gold'; ctx.font = "8px monospace"; ctx.fillText('ROBIN', 50, canvas.height-35); }
-        else if (currentSidekickLevel === 2) { ctx.font = "28px monospace"; ctx.fillStyle = '#ff69b4'; ctx.fillText('🦸‍♀️', 20, canvas.height-40); ctx.fillStyle = 'gold'; ctx.fillText('BATGIRL', 50, canvas.height-35); }
-        if (sidekickCooldown > 0 && currentSidekickLevel > 0 && currentSidekickLevel < 3) {
-            ctx.fillStyle = '#333366'; ctx.fillRect(20, canvas.height-50, 80, 5);
-            ctx.fillStyle = 'gold'; ctx.fillRect(20, canvas.height-50, 80*(1-sidekickCooldown/60), 5);
-        }
-    }
+
     function drawHealthBars() {
         ctx.fillStyle = '#330000'; ctx.fillRect(20, 25, 200, 16);
         ctx.fillStyle = '#00cc44'; ctx.fillRect(20, 25, 200*(player.health/player.maxHealth), 16);
         ctx.fillStyle = '#ffffff'; ctx.font = "bold 9px monospace"; ctx.fillText("BATMAN", 25, 37);
         if (damageFlash > 0) { ctx.fillStyle = 'rgba(255,0,0,0.15)'; ctx.fillRect(0, 0, canvas.width, canvas.height); }
     }
+
     function drawFloatingTexts() {
         for (let i=0; i<floatingTexts.length; i++) {
             let ft = floatingTexts[i];
@@ -436,6 +453,8 @@
         attackCooldown = 0;
         sidekickCooldown = 0;
         nightwingActive = false;
+        villain.isAttacking = false;
+        villain.attackCooldown = 0;
         if (timerInterval) clearInterval(timerInterval);
         startTimer();
         villain.x = canvas.width - 200;
@@ -443,7 +462,7 @@
         document.getElementById('timer').style.color = 'gold';
     }
 
-    // ========== KEYBOARD & TOUCH ==========
+    // ========== CONTROLS ==========
     window.keys = {};
     window.addEventListener('keydown', (e) => {
         let key = e.key.toLowerCase();
@@ -482,4 +501,3 @@
 </script>
 </body>
 </html>
- 
