@@ -769,6 +769,110 @@
         if (sidekickCooldown > 0) sidekickCooldown--;
         if (damageFlash > 0) damageFlash--;
         if (invincibleFrames > 0) invincibleFrames--;
-        if (blockTimer > 0) { blockTimer--; if (blockTimer
+        if (blockTimer > 0) { blockTimer--; if (blockTimer <= 0) blockActive = false; }
+        if (player.attackTimer > 0) player.attackTimer--;
+        else player.isAttacking = false;
+        
+        const keys = window.keys || {};
+        if (keys.ArrowLeft && player.x > 70) { player.x -= 5; player.facingRight = false; }
+        if (keys.ArrowRight && player.x < canvas.width - 300) { player.x += 5; player.facingRight = true; }
+        
+        updateVillainMovement();
+        villainAttack();
+        updateNightwing();
+    }
 
-      
+    function draw() {
+        drawBackground();
+        drawHealthBars();
+        drawVillain();
+        drawBatman();
+        drawNightwing();
+        drawSidekickIcon();
+        drawFloatingTexts();
+        
+        if (!gameRunning) {
+            ctx.fillStyle = 'rgba(0,0,0,0.9)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.font = "bold 28px monospace";
+            ctx.fillStyle = '#ffd700';
+            ctx.fillText(player.health > 0 ? '🏆 VICTORY! 🏆' : '💀 GAME OVER 💀', canvas.width/2 - 130, canvas.height/2 - 30);
+            ctx.font = "12px monospace";
+            ctx.fillStyle = '#ffffff';
+            ctx.fillText(`Final Score: ${score}`, canvas.width/2 - 50, canvas.height/2 + 30);
+        }
+    }
+
+    function gameLoop() {
+        updateGame();
+        draw();
+        requestAnimationFrame(gameLoop);
+    }
+
+    function restartGame() {
+        gameRunning = true;
+        score = 0;
+        currentLevel = 1;
+        currentLevelData = LEVELS[1];
+        currentVillainHealth = currentLevelData.health;
+        currentVillainMaxHealth = currentLevelData.health;
+        player.health = 100;
+        player.x = 150;
+        currentSidekickLevel = 0;
+        timeLeft = 180;
+        floatingTexts = [];
+        attackCooldown = 0;
+        sidekickCooldown = 0;
+        nightwingActive = false;
+        
+        if (timerInterval) clearInterval(timerInterval);
+        startTimer();
+        
+        villain.x = canvas.width - 200;
+        updateUI();
+        document.getElementById('timer').style.color = '#ffd700';
+    }
+
+    // ========== CONTROLS ==========
+    window.keys = {};
+    window.addEventListener('keydown', (e) => {
+        const key = e.key.toLowerCase();
+        if (key === 'arrowleft') keys.ArrowLeft = true;
+        if (key === 'arrowright') keys.ArrowRight = true;
+        if (key === 'a') { e.preventDefault(); punch(); }
+        if (key === 's') { e.preventDefault(); kick(); }
+        if (key === 'd') { e.preventDefault(); callSidekick(); }
+        if (key === ' ') { e.preventDefault(); block(); }
+        if (key === 'r') { e.preventDefault(); restartGame(); }
+    });
+    
+    window.addEventListener('keyup', (e) => {
+        const key = e.key.toLowerCase();
+        if (key === 'arrowleft') keys.ArrowLeft = false;
+        if (key === 'arrowright') keys.ArrowRight = false;
+    });
+
+    canvas.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        const rect = canvas.getBoundingClientRect();
+        const touchX = e.touches[0].clientX - rect.left;
+        if (touchX < canvas.width / 4) punch();
+        else if (touchX < canvas.width / 2) kick();
+        else if (touchX < canvas.width * 3/4) block();
+        else callSidekick();
+    });
+    
+    canvas.addEventListener('touchmove', (e) => {
+        e.preventDefault();
+        const rect = canvas.getBoundingClientRect();
+        const touchX = e.touches[0].clientX - rect.left;
+        player.x = Math.min(Math.max(touchX - 30, 70), canvas.width - 300);
+    });
+
+    startTimer();
+    updateUI();
+    gameLoop();
+</script>
+</body>
+</html>
+          
